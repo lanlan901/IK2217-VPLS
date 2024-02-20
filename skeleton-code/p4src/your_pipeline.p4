@@ -32,11 +32,11 @@ control MyIngress(inout headers hdr,
         standard_metadata.egress_spec = port;
     }
 
-    action tunnel_forward (egressSpec_t port, tunnel_id_t tunnel_id, pw_id_t pw_id) {
-        hdr.ethernet_tunnel.setValid();
-        hdr.ethernet.etherType = TYPE_TUNNEL;
-        hdr.tunnel.tunnel_id = tunnel_id;
-        hdr.tunnel.pw_id = pw_id;
+    action tunnel_forward (egressSpec_t port) {
+        //hdr.ethernet_tunnel.setValid();
+        //hdr.ethernet.etherType = TYPE_TUNNEL;
+        //hdr.tunnel.tunnel_id = tunnel_id;
+        //hdr.tunnel.pw_id = pw_id;
         standard_metadata.egress_spec = port;
     }
 
@@ -77,11 +77,12 @@ control MyIngress(inout headers hdr,
             num_nhops);
         meta.ecmp_group_id = ecmp_group_id;
     }
-    action set_nhop(macAddr_t srcAddr, macAddr_t dstAddr, egressSpec_t port) {
-        hdr.ethernet.srcAddr = srcAddr;
-        hdr.ethernet.dstAddr = dstAddr;
+
+    action set_nhop(egressSpec_t port) {
+        // hdr.ethernet.srcAddr = srcAddr;
+        // hdr.ethernet.dstAddr = dstAddr;
         standard_metadata.egress_spec = port;
-        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+        //hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
 
     table ecmp_group_to_nhop {
@@ -90,22 +91,24 @@ control MyIngress(inout headers hdr,
             meta.ecmp_hash: exact;
         }
         actions = {
-            drop;
+            NoAction;
             set_nhop;
         }
         size = 1024;
+        default_action = NoAction;
     }
     table tunnel_ecmp {
         key = {
+            standard_metadata.ingress_port: exact;
             meta.tunnel_id: exact;
         }
         actions = {
             set_nhop;
             ecmp_group;
-            drop;
+            NoAction;
         }
         size = 1024;
-        default_action = drop;
+        default_action = NoAction;
     }
 
     table ipv4_lpm {
@@ -170,9 +173,13 @@ control MyIngress(inout headers hdr,
     apply {
         learning_table.apply();
         if (hdr.tunnel.isValid()) {
-            if (tunnel_forward_table.apply().hit) { }
-            else if (tunnel_ecmp.apply().hit) { }
-            else tunnel_flooding.apply();
+            //if (tunnel_forward_table.apply().hit) { }
+            switch (tunnel_ecmp.apply().action_run) {
+                ecmp_group: {
+                    ecmp_group_to_nhop.apply();
+                }
+             }
+            tunnel_flooding.apply();
         }
         else {
             if (forward_table.apply().hit) { }
