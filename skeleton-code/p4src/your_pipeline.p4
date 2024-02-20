@@ -160,16 +160,17 @@ control MyIngress(inout headers hdr,
         if (hdr.tunnel.isValid()) {
             if (tunnel_forward_table.apply().hit) { }
             else tunnel_flooding.apply();
-            }
-    } else {
-        if (forward_table.apply().hit) { }
-        else if (hdr.ipv4.isValid()) {
-            switch (ipv4_lpm.apply().action_run){
-                ecmp_group: { ecmp_group_to_nhop.apply(); }
-            }
         }
-        else if (tunnel_forward_table.apply().hit) { }
-        else customer_floodingt.apply();
+        else {
+            if (forward_table.apply().hit) { }
+            else if (hdr.ipv4.isValid()) {
+                switch (ipv4_lpm.apply().action_run){
+                    ecmp_group: { ecmp_group_to_nhop.apply(); }
+                }
+            }
+            else if (tunnel_forward_table.apply().hit) { }
+            else customer_floodingt.apply();
+        }
     }
 }
 
