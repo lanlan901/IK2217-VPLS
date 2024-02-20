@@ -182,7 +182,7 @@ control MyIngress(inout headers hdr,
                 }
             }
             else if (tunnel_forward_table.apply().hit) { }
-            else customer_floodingt.apply();
+            else customer_flooding.apply();
         }
     }
 }
