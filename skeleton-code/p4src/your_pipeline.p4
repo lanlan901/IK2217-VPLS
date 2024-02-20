@@ -28,8 +28,148 @@ control MyIngress(inout headers hdr,
         mark_to_drop();
     }
 
+    action forward (egressSpec_t port) {
+        standard_metadata.egress_spec = port;
+    }
+
+    action tunnel_forward (egressSpec_t port, tunnel_id_t tunnel_id, pw_id_t pw_id) {
+        hdr.ethernet_tunnel.setValid();
+        hdr.ethernet.etherType = TYPE_TUNNEL;
+        hdr.tunnel.tunnel_id = tunnel_id;
+        hdr.tunnel.pw_id = pw_id;
+        standard_metadata.egress_spec = port;
+    }
+
+    //TASK 1 : normal forwarding table
+    table forward_table {
+        key = {
+            standard_metadata.ingress_port: exact;
+            hdr.ethernet.dstAddr: exact;
+        }
+        actions = {
+            forward;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction;
+    }
+
+    table tunnel_forward_table {
+        key = {
+            standard_metadata.ingress_port: exact;
+            hdr.tunnel.tunnel_id: exact;
+            hdr.tunnel.pw_id: exact;
+        }
+        actions = {
+            tunnel_forward;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction;
+    }
+
+    //TASK 2: ECMP
+    action ecmp_group (bit<14> ecmp_group_id, bit<16> num_nhops) {
+        hash(meta.ecmp_hash,
+            HashAlgorithm.crc32,
+            (bit<1>)0,
+            {hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.tcp.srcPort, hdr.tcp.dstPort, hdr.ipv4.protocol},
+            num_nhops);
+        meta.ecmp_group_id = ecmp_group_id;
+    }
+    action set_nhop(macAddr_t srcAddr, macAddr_t dstAddr, egressSpec_t port) {
+        hdr.ethernet.srcAddr = srcAddr;
+        hdr.ethernet.dstAddr = dstAddr;
+        standard_metadata.egress_spec = port;
+        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+    }
+
+    table ecmp_group_to_nhop {
+        key = {
+            meta.ecmp_group_id: exact;
+            meta.ecmp_hash: exact;
+        }
+        actions = {
+            drop;
+            set_nhop;
+        }
+        size = 1024;
+    }
+
+    table ipv4_lpm {
+        key = {
+            hdr.ipv4.dstAddr: lpm;
+        }
+        actions = {
+            set_nhop;
+            ecmp_group;
+            drop;
+        }
+        size = 1024;
+        default_action = drop;
+    }
+
+    //TASK 3 : multicasting
+    action set_mcast_grp (bit<16> mcast_grp) {
+        standard_metadata.mcast_grp = mcast_grp;
+    }
+
+    table customer_flooding {
+        key = {
+            hdr.tunnel.pw_id : exact;
+        }
+        actions = {
+            set_mcast_grp;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction;
+    }
+
+    table tunnel_flooding {
+        key = {
+            standard_metadata.ingress_port: exact;
+        }
+        actions = {
+            set_mcast_grp;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction;
+    }
+
+    //TASK 4 : L2 learning
+    action mac_learn() {
+        meta.ingress_port = standard_metadata.ingress_port;
+        clone3(CloneType.I2E, 100, meta);
+    }
+    table learning_table {
+        key = {
+            hdr.ethernet.srcAddr: exact;
+        }
+        actions = {
+            mac_learn;
+            NoAction;
+        }
+        size = 1024;
+        default_action = mac_learn;
+    }
 
     apply {
+        learning_table.apply();
+        if (hdr.tunnel.isValid()) {
+            if (tunnel_forward_table.apply().hit) { }
+            else tunnel_flooding.apply();
+            }
+    } else {
+        if (forward_table.apply().hit) { }
+        else if (hdr.ipv4.isValid()) {
+            switch (ipv4_lpm.apply().action_run){
+                ecmp_group: { ecmp_group_to_nhop.apply(); }
+            }
+        }
+        else if (tunnel_forward_table.apply().hit) { }
+        else customer_floodingt.apply();
     }
 }
 
@@ -40,12 +180,26 @@ control MyIngress(inout headers hdr,
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
-    
+
     action drop_2(){
         mark_to_drop();
     }
-
     apply {
+        if (standard_metadata.instance_type == 1){
+            hdr.cpu.setValid();
+            hdr.cpu.srcAddr = hdr.ethernet.srcAddr;
+            hdr.ethernet.etherType = L2_LEARN_ETHER_TYPE;
+            if (hdr.tunnel.isValid()) {
+                hdr.cpu.tunnel_id = hdr.tunnel.tunnel_id;
+                hdr.cpu.pw_id = hdr.tunnel.pw_id;
+                hdr.cpu.ingress_port = 0;
+            } else {
+                hdr.cpu.tunnel_id = 0;
+                hdr.cpu.pw_id = 0;
+                hdr.cpu.ingress_port = (bit<16>)meta.ingress_port;
+            truncate((bit<32>)22);
+            }
+        }
     }
 }
 

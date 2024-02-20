@@ -3,9 +3,15 @@
 *************************************************************************/
 
 const bit<16> TYPE_IPV4 = 0x800;
+const bit<16> TYPE_TUNNEL = 0x2345;
+
 
 typedef bit<48> macAddr_t;
 typedef bit<32> ip4Addr_t;
+typedef bit<9> egressSpec_t;
+typedef bit<16> tunnel_id_t;
+typedef bit<16> pw_id_t;
+
 
 header ethernet_t {
     macAddr_t dstAddr;
@@ -30,6 +36,10 @@ header ipv4_t {
 }
 
 header cpu_t{
+    bit<48> srcAddr;
+    bit<16> ingress_port;
+    tunnel_id_t tunnel_id;
+    pw_id_t pw_id;
 }
 
 header rtt_t{
@@ -39,13 +49,46 @@ header rtt_t{
     bit<48> rtt;
 }
 
+header tunnel_t{
+    tunnel_id_t tunnel_id;
+    pw_id_t pw_id;
+}
+
+header tcp_t{
+    bit<16> srcPort;
+    bit<16> dstPort;
+    bit<32> seqNo;
+    bit<32> ackNo;
+    bit<4>  dataOffset;
+    bit<4>  res;
+    bit<1>  cwr;
+    bit<1>  ece;
+    bit<1>  urg;
+    bit<1>  ack;
+    bit<1>  psh;
+    bit<1>  rst;
+    bit<1>  syn;
+    bit<1>  fin;
+    bit<16> window;
+    bit<16> checksum;
+    bit<16> urgentPtr;
+}
+
 struct metadata {
+    bit<9> ingress_port;
+    bit<14> ecmp_hash;
+    bit<14> ecmp_group_id;
+    tunnel_id_t tunnel_id;
+    pw_id_t pw_id;
+    bit<2> is_tunnel;
 }
 
 struct headers {
     ethernet_t   ethernet;
-    ipv4_t 		 ipv4;
+    ipv4_t 	     ipv4;
     cpu_t        cpu;
     rtt_t        rtt;
+    tunnel_t     tunnel;
+    tcp_t        tcp;
 }
 
