@@ -111,6 +111,7 @@ class RoutingController(object):
         self.init()
         self.tunnel_list = []
         self.pe_list = []
+        self.non_pe_list = []
 
     def init(self):
         self.connect_to_switches()
@@ -161,11 +162,10 @@ class RoutingController(object):
     def get_pw_id(self, sw_name):
         customer_to_pw_id = {}
         for host in self.topo.get_hosts_connected_to(sw_name):
-            customer_id = self.vpls_conf['hosts'][host]
-            if customer_id == 'A':
-                customer_to_pw_id[customer_id] = 1
-            elif customer_id == 'B':
-                customer_to_pw_id[customer_id] = 2
+            port_num = self.topo.node_to_node_port_num(sw_name, host)
+            customer_label = self.vpls_conf['hosts'][host]
+            pw_id = hash(customer_label) %1024 + port_num
+            customer_to_pw_id[port_num] = pw_id
         return customer_to_pw_id
 
     def get_customer_to_ports_mapping(self):
@@ -175,7 +175,7 @@ class RoutingController(object):
             connected_hosts = self.topo.get_hosts_connected_to(sw_name)
             for host in connected_hosts:
                 customer_id = self.vpls_conf['hosts'][host]
-                port_num = self.topo.node_to_node_port_num(sw_name, host)##交换机到主机的端口号
+                port_num = self.topo.node_to_node_port_num(sw_name, host)
                 if customer_id not in customer_to_ports:
                     customer_to_ports[customer_id] = []
                 customer_to_ports[customer_id].append(port_num)
@@ -192,11 +192,15 @@ class RoutingController(object):
             tunnel_to_ports[tuple(tunnel)] = ports
         return tunnel_to_ports
 
-    def process_network(self):
-
+    def get_pe_list(self):
         for sw_name in self.topo.get_p4switches().keys():
             if len(self.topo.get_hosts_connected_to(sw_name)) > 0 :
                 self.pe_list.append(sw_name)
+            elif len(self.topo.get_hosts_connected_to(sw_name)) == 0 :
+                self.non_pe_list.append(sw_name)
+
+    def process_network(self):
+
 
         for pe in self.pe_list:
 
