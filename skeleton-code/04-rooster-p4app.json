@@ -1,0 +1,55 @@
+{
+  "program": "p4src/your_pipeline.p4",
+  "switch": "simple_switch",
+  "compiler": "p4c",
+  "options": "--target bmv2 --arch v1model --std p4-16",
+  "switch_cli": "simple_switch_CLI",
+  "cli": true,
+  "pcap_dump": true,
+  "enable_log": true,
+    "topo_module": {
+    "file_path": "",
+    "module_name": "p4utils.mininetlib.apptopo",
+    "object_name": "AppTopoStrategies"
+  }, 
+  "controller_module": null,
+  "topodb_module": {
+    "file_path": "",
+    "module_name": "p4utils.utils.topology",
+    "object_name": "Topology"
+  },
+  "mininet_module": {
+    "file_path": "",
+    "module_name": "p4utils.mininetlib.p4net",
+    "object_name": "P4Mininet"
+  },
+  "topology": {
+    "assignment_strategy": "manual",
+    "auto_arp_tables": false,
+    "links": [["h1", "s1",{"delay":"10ms"}], 
+      ["h2", "s2",{"delay":"20ms"}], 
+      ["h3", "s1",{"delay":"30ms"}], 
+      ["h4", "s3",{"delay":"40ms"}], 
+      ["s1", "s2",{"delay":"50ms"}], 
+      ["s2", "s3",{"delay":"60ms"}], 
+      ["s1", "s3",{"delay":"70ms"}]],
+ "hosts": {
+      "h1": {"ip":"10.0.0.1/16", "mac":"00:00:0a:00:00:01"
+      },
+      "h2": {"ip":"10.0.0.2/16", "mac":"00:00:0a:00:00:02"
+      },
+      "h3": {"ip":"10.0.0.1/16", "mac":"00:00:0a:00:00:01"
+      },
+      "h4": {"ip":"10.0.0.2/16", "mac":"00:00:0a:00:00:02"
+      }
+  },
+    "switches": {
+      "s1": {"cpu_port" : true
+      },
+      "s2": {"cpu_port" : true
+      },
+      "s3": {"cpu_port" : true
+      }
+    }
+  }
+}
