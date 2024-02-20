@@ -95,6 +95,18 @@ control MyIngress(inout headers hdr,
         }
         size = 1024;
     }
+    table tunnel_ecmp {
+        key = {
+            meta.tunnel_id: exact;
+        }
+        actions = {
+            set_nhop;
+            ecmp_group;
+            drop;
+        }
+        size = 1024;
+        default_action = drop;
+    }
 
     table ipv4_lpm {
         key = {
@@ -159,6 +171,7 @@ control MyIngress(inout headers hdr,
         learning_table.apply();
         if (hdr.tunnel.isValid()) {
             if (tunnel_forward_table.apply().hit) { }
+            else if (tunnel_ecmp.apply().hit) { }
             else tunnel_flooding.apply();
         }
         else {
