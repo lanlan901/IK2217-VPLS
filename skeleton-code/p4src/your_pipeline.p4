@@ -172,6 +172,7 @@ control MyIngress(inout headers hdr,
 
     apply {
         learning_table.apply();
+        //todo 匹配进入端口做转发（什么都不做留到else中处理）/封装
         if (hdr.tunnel.isValid()) {
             //if (tunnel_forward_table.apply().hit) { }
             switch (tunnel_ecmp.apply().action_run) {
@@ -179,9 +180,13 @@ control MyIngress(inout headers hdr,
                     ecmp_group_to_nhop.apply();
                 }
              }
+
+            //todo匹配目的mac地址解封装
+
             tunnel_flooding.apply();
         }
         else {
+            
             if (forward_table.apply().hit) { }
             else if (hdr.ipv4.isValid()) {
                 switch (ipv4_lpm.apply().action_run){
