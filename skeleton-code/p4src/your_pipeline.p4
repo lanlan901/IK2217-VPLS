@@ -84,6 +84,10 @@ control MyIngress(inout headers hdr,
         standard_metadata.egress_spec = port;
         //hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
+    action decap_nhop(egressSpec_t port){
+        hdr.tunnel.setInValid();
+        standard_metadata.egress_spec = port;
+    }
 
     table ecmp_group_to_nhop {
         key = {
@@ -103,6 +107,7 @@ control MyIngress(inout headers hdr,
             meta.tunnel_id: exact;
         }
         actions = {
+            decap_nhop;
             set_nhop;
             ecmp_group;
             NoAction;
@@ -170,18 +175,38 @@ control MyIngress(inout headers hdr,
         default_action = mac_learn;
     }
 
+    action encap(tunnel_id_t tunnel_id, pw_id_t pw_id) {
+        hdr.tunnel.setValid();
+        hdr.tunnel.tunnel_id = tunnel_id;
+        hdr.tunnel.pw_id = pw_id;
+    }
+
+    table whether_encap {
+        key = {
+            standard_metadata.ingress_port: exact;
+            hdr.ethernet.srcAddr: exact;
+            hdr.ethernet.dstAddr: exact;
+        }
+        actions = {
+            encap;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction;
+    }
+
+
     apply {
         learning_table.apply();
-        //todo 匹配进入端口做转发（什么都不做留到else中处理）/封装
+        //匹配进入端口做转发（什么都不做留到else中处理）/封装
+        whether_encap.apply();// encap or NoAction
+
         if (hdr.tunnel.isValid()) {
-            //if (tunnel_forward_table.apply().hit) { }
-            switch (tunnel_ecmp.apply().action_run) {
+            switch (tunnel_ecmp.apply().action_run) {// decap_nhop or set_nhop or ecmp_group or noaction
                 ecmp_group: {
                     ecmp_group_to_nhop.apply();
                 }
              }
-
-            //todo匹配目的mac地址解封装
 
             tunnel_flooding.apply();
         }
