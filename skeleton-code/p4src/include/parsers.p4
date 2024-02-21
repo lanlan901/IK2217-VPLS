@@ -6,14 +6,13 @@ parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
-//todo
     state start {
-        transition parse_ethernet;
+        transition parse_ethernet_outer;
     }
 
-    state parse_ethernet {
-        packet.extract(hdr.ethernet);
-        transition select(hdr.ethernet.etherType) {
+    state parse_ethernet_outer {
+        packet.extract(hdr.ethernet_outer);
+        transition select(hdr.ethernet_outer.etherType) {
             TYPE_IPV4: parse_ipv4;
             TYPE_TUNNEL: parse_tunnel;
             default: accept;
@@ -35,19 +34,27 @@ parser MyParser(packet_in packet,
 
     state parse_tunnel{
         packet.extract(hdr.tunnel);
-        transition parse_ethernet_encap;
+        transition parse_ethernet;
+    }
+
+    state parse_ethernet{
+        transition select(hdr.ethernet.etherType) {
+            TYPE_IPV4: parse_ipv4;
+            default: accept;
+        }
     }
 }
 
 /*************************************************************************
 ***********************  D E P A R S E R  *******************************
 *************************************************************************/
-//todo
+
 control MyDeparser(packet_out packet, in headers hdr) {
     apply {
+        packet.emit(hdr.ethernet_outer);
+        packet.emit(hdr.tunnel);
         packet.emit(hdr.ethernet);
         packet.emit(hdr.cpu);
-        packet.emit(hdr.rtt);
         packet.emit(hdr.ipv4);
         packet.emit(hdr.tcp);
     }

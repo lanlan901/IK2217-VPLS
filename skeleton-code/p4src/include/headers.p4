@@ -42,13 +42,6 @@ header cpu_t{
     pw_id_t pw_id;
 }
 
-header rtt_t{
-    bit<16> pw_id;
-    bit<32> ip_src;
-    bit<32> ip_dst;
-    bit<48> rtt;
-}
-
 header tunnel_t{
     tunnel_id_t tunnel_id;
     pw_id_t pw_id;
@@ -84,10 +77,10 @@ struct metadata {
 }
 
 struct headers {
+    ethernet_t   ethernet_outer;
     ethernet_t   ethernet;
     ipv4_t 	     ipv4;
     cpu_t        cpu;
-    rtt_t        rtt;
     tunnel_t     tunnel;
     tcp_t        tcp;
 }

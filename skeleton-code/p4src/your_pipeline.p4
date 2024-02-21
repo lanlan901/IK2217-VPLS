@@ -33,10 +33,6 @@ control MyIngress(inout headers hdr,
     }
 
     action tunnel_forward (egressSpec_t port) {
-        //hdr.ethernet_tunnel.setValid();
-        //hdr.ethernet.etherType = TYPE_TUNNEL;
-        //hdr.tunnel.tunnel_id = tunnel_id;
-        //hdr.tunnel.pw_id = pw_id;
         standard_metadata.egress_spec = port;
     }
 
@@ -134,7 +130,7 @@ control MyIngress(inout headers hdr,
         standard_metadata.mcast_grp = mcast_grp;
     }
 
-    table customer_flooding {
+    table customer_multicast {
         key = {
             hdr.tunnel.pw_id : exact;
         }
@@ -146,7 +142,7 @@ control MyIngress(inout headers hdr,
         default_action = NoAction;
     }
 
-    table tunnel_flooding {
+    table tunnel_multicast {
         key = {
             standard_metadata.ingress_port: exact;
         }
@@ -176,6 +172,9 @@ control MyIngress(inout headers hdr,
     }
 
     action encap(tunnel_id_t tunnel_id, pw_id_t pw_id) {
+        hdr.ethernet_outer.setValid();
+        hdr.ethernet_outer.etherType = TYPE_TUNNEL;
+
         hdr.tunnel.setValid();
         hdr.tunnel.tunnel_id = tunnel_id;
         hdr.tunnel.pw_id = pw_id;
@@ -208,10 +207,9 @@ control MyIngress(inout headers hdr,
                 }
              }
 
-            tunnel_flooding.apply();
+            tunnel_multicast.apply();
         }
         else {
-            
             if (forward_table.apply().hit) { }
             else if (hdr.ipv4.isValid()) {
                 switch (ipv4_lpm.apply().action_run){
@@ -219,7 +217,7 @@ control MyIngress(inout headers hdr,
                 }
             }
             else if (tunnel_forward_table.apply().hit) { }
-            else customer_flooding.apply();
+            else customer_multicast.apply();
         }
     }
 }
@@ -250,6 +248,13 @@ control MyEgress(inout headers hdr,
                 hdr.cpu.ingress_port = (bit<16>)meta.ingress_port;
             truncate((bit<32>)22);
             }
+        } else if (standard_metadata.egress_rid != 0) { //是复制包
+            hdr.ethernet_2.setValid();
+            hdr.tunnel.setValid();
+            hdr.ethernet_2 = hdr.ethernet;
+            hdr.ethernet.etherType = TYPE_TUNNEL;
+            hdr.tunnel.tunnel_id = standard_metadata.egress_rid;
+            hdr.tunnel.pw_id = meta.pw_id;
         }
     }
 }
