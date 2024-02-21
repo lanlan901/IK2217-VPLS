@@ -59,32 +59,24 @@ class EventBasedController(threading.Thread):
                 [(rtt_header.customer_id, rtt_header.ip_addr_src, rtt_header.ip_addr_dst, rtt_header.rtt)])
 
     def add_broadcast_groups(self):
-        customer_to_ports = self.interface.get_customer_to_ports_mapping()
-        tunnel_to_ports = self.interface.get_tunnel_to_ports_mapping()
-
         mc_grp_id = 1
+        customer_to_ports = self.get_customer_to_ports_mapping()
         for customer_id, ports in customer_to_ports.items():
             self.controller.mc_mgrp_create(mc_grp_id)
-            handle = self.controller.mc_node_create(0, ports)
+            handle = self.controller.mc_node_create(mc_grp_id, ports)
             self.controller.mc_node_associate(mc_grp_id, handle)
-            pw_id = self.interface.get_pw_id()
-            self.controller.table_add("customer_flooding", "set_mcast_grp", [str(pw_id)], [str(mc_grp_id)])
+            ##
+            self.controller.table_add("customer_multicast", "set_mcast_grp", [str(pw_id)], [str(mc_grp_id)])
             mc_grp_id += 1
-
-        for tunnel_id, ports in tunnel_to_ports.items():
-            self.controller.mc_mgrp_create(mc_grp_id)
-            handle = self.controller.mc_node_create(0, ports)
-            self.controller.mc_node_associate(mc_grp_id, handle)
-            self.controller.table_add("customer_flooding", "set_mcast_grp", [str(tunnel_id)], [str(mc_grp_id)])
-            mc_grp_id += 1
+        
 
     def process_packet(self, packet_data):
         ### use exercise 04-Learning as a reference point
-        for mac_addr, tunnel_id, pw_id, ingress_port in  packet_data:
-            if tunnel_id == 0:
-                egress_spec = ingress_port
-            self.controller.table_add("learning_table", "NoAction", [str(mac_addr)])
-            self.controller.table_add("dmac", "forward", [str(mac_addr)], [str(ingress_port)])
+        for macAddr, tunnel_id, pw_id, ingress_port in packet_data:
+            if self.topo.get_hosts_connected_to(self.sw_name) == []: ##中间交换机
+                self.controller.table_add('learning_table', 'NoAction', [str(macAddr)], [])
+                return
+        
         pass
 
     def get_all_ports(self, sw_name):
@@ -141,12 +133,13 @@ class RoutingController(object):
         return "{:02x}".format(self.topo.get_p4switches()[sw_name]["sw_id"])
 
     def generate_tunnel_list(self):
-        pe_switches = [sw for sw in self.topo.get_p4switches() if self.topo.get_hosts_connected_to(sw)]
+        pe_switches = []
+        for sw_name in self.topo.get_p4switches():
+            if len(self.topo.get_hosts_connected_to(sw_name)) != 0:
+                pe_switches.append(sw_name)
         pe_pairs = list(itertools.combinations(pe_switches, 2))
-
-        for pair in pe_pairs:
-            sw1, sw2 = pair
-            paths = self.topo.get_shortest_paths_between_nodes(sw1, sw2)
+        for sw in pe_pairs:
+            paths = self.topo.get_shortest_paths_between_nodes(sw[0], sw[1])
             for path in paths:
                 tunnel_ports = self.get_path_ports(path)
                 self.tunnel_list.append(tunnel_ports)
@@ -158,8 +151,9 @@ class RoutingController(object):
             port_num = self.topo.node_to_node_port_num(sw_name, next_sw_name)
             ports.append((sw_name, port_num))
         return ports
+    
 
-    def get_pw_id(self, sw_name):
+    def get_pw_id(self):
         customer_to_pw_id = {}
         for host in self.topo.get_hosts_connected_to(sw_name):
             port_num = self.topo.node_to_node_port_num(sw_name, host)
@@ -167,6 +161,20 @@ class RoutingController(object):
             pw_id = hash(customer_label) %1024 + port_num
             customer_to_pw_id[port_num] = pw_id
         return customer_to_pw_id
+    
+    def get_tunnel_id(self):
+        tunnel_to_ports = self.get_tunnel_to_ports_mapping()
+        tunnel_id = 0 #初始tunnel_id
+        tunnel_id_mapping = {}
+        for tunnel, ports in tunnel_to_ports.items():
+            for sw_name ,port_num in ports:
+                sw_pw_id = self.get_pw_id(sw_name)
+                if port_num in sw_pw_id:
+                    pw_id = sw_pw_id[port_num]
+                    self.controllers[sw_name].table_add("tunnel_table", "set_tunnel", [str(tunnel_id), str(pw_id)], [str(port_num)])
+            tunnel_id_mapping[tuple(tunnel)] = tunnel_id
+            tunnel_id += 1
+        return tunnel_id_mapping
 
     def get_customer_to_ports_mapping(self):
         customer_to_ports = {}
@@ -188,16 +196,32 @@ class RoutingController(object):
             for i in range(len(tunnel) - 1):
                 sw_name, next_sw_name = tunnel[i], tunnel[i + 1]
                 port_num = self.topo.node_to_node_port_num(sw_name, next_sw_name)
-                ports.append(port_num)
+                ports.append((sw_name, port_num))
             tunnel_to_ports[tuple(tunnel)] = ports
         return tunnel_to_ports
-
+    
     def get_pe_list(self):
         for sw_name in self.topo.get_p4switches().keys():
             if len(self.topo.get_hosts_connected_to(sw_name)) > 0 :
                 self.pe_list.append(sw_name)
             elif len(self.topo.get_hosts_connected_to(sw_name)) == 0 :
                 self.non_pe_list.append(sw_name)
+
+    def get_all_tunnel_ports(self, sw_name):
+        ports = []
+        for tunnel in self.tunnel_list:
+            if sw_name in tunnel:
+                ports_t = self.get_tunnel_ports(tunnel, sw_name)
+                for port in ports_t:
+                    if not port in ports:
+                        ports.append(port)
+        return ports
+    
+    def get_all_non_tunnel_ports(self, sw_name):
+        ports = []
+        for host in self.topo.get_hosts_connected_to(sw_name):
+            ports.append(self.topo.node_to_node_port_num(sw_name, host))
+        return ports
 
     def process_network(self):
 

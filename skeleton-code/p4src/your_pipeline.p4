@@ -132,7 +132,8 @@ control MyIngress(inout headers hdr,
 
     table customer_multicast {
         key = {
-            hdr.tunnel.pw_id : exact;
+            hdr.tunnel.pw_id: exact;
+            hdr.ethernet.srcAddr: exact;
         }
         actions = {
             set_mcast_grp;
@@ -233,6 +234,25 @@ control MyEgress(inout headers hdr,
     action drop_2(){
         mark_to_drop();
     }
+
+    action set_tunnel() {
+        hdr.ethernet_outer.setValid();
+        hdr.tunnel.setValid();
+        hdr.ethernet.etherType = TYPE_TUNNEL;
+        hdr.tunnel.tunnel_id = meta.tunnel_id;
+        hdr.tunnel.pw_id = meta.pw_id;
+    }
+
+    table tunnel_table {
+        key = { standard_metadata.egress_port: exact; }
+        actions = {
+            set_tunnel;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction;
+    }
+
     apply {
         if (standard_metadata.instance_type == 1){
             hdr.cpu.setValid();
@@ -249,12 +269,7 @@ control MyEgress(inout headers hdr,
             truncate((bit<32>)22);
             }
         } else if (standard_metadata.egress_rid != 0) { //是复制包
-            hdr.ethernet_2.setValid();
-            hdr.tunnel.setValid();
-            hdr.ethernet_2 = hdr.ethernet;
-            hdr.ethernet.etherType = TYPE_TUNNEL;
-            hdr.tunnel.tunnel_id = standard_metadata.egress_rid;
-            hdr.tunnel.pw_id = meta.pw_id;
+            tunnel_table.apply();
         }
     }
 }
