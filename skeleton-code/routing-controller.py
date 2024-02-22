@@ -129,15 +129,12 @@ class RoutingController(object):
         self.tunnel_path_list = tunnel_path_list
         self.pe_pairs = pe_pairs
 
-    def get_pw_id(self, sw_name):
-        customer_to_pw_id = {}
-        for host in self.topo.get_hosts_connected_to(sw_name):
-            port_num = self.topo.node_to_node_port_num(sw_name, host)
-            customer_label = self.vpls_conf['hosts'][host]
-            pw_id = hash(customer_label) %1024 + port_num
-            customer_to_pw_id[port_num] = pw_id
-        return customer_to_pw_id
-
+    def get_pw_id(self, sw_name, host_name): #连接到特定交换机的特定主机和pw_id的映射
+        port_num = self.topo.node_to_node_port_num(sw_name, host_name)
+        customer_label = self.vpls_conf['hosts'][host_name]
+        pw_id = hash(customer_label) %1024 + port_num
+        return pw_id
+    
     def get_customer_to_ports_mapping(self):
         customer_to_ports = {}
         pe_switches = self.topo.get_p4switches()
@@ -180,12 +177,6 @@ class RoutingController(object):
                         ports.append(port)
         return ports
     
-    def sw_to_host_ports(self, sw_name): ##交换机到主机端口
-        ports = []
-        for host in self.topo.get_hosts_connected_to(sw_name):
-            ports.append(self.topo.node_to_node_port_num(sw_name, host))
-        return ports
-    
     def port_to_tunnel(self, sw_name, port): ##端口号参与的隧道列表
         tunnels = []
         for tunnel in self.tunnel_list:
@@ -203,9 +194,9 @@ class RoutingController(object):
         for pe_pair in self.pe_pairs:
             pe1 = pe_pair[0]
             pe2 = pe_pair[1]
-            tunnel_id = pe_pairs.index(pe_pair)
+            tunnel_id = self.pe_pairs.index(pe_pair)
 
-            paths =  tunnel_path_list[tunnel_id]
+            paths =  self.tunnel_path_list[tunnel_id]
 
             if len(paths) == 1:#如果这个隧道只有一条路径
                 path = paths[0]
@@ -217,44 +208,46 @@ class RoutingController(object):
                     in_port = self.topo.node_to_node_port_num(pe1, host)
                     self.controllers[pe1].table_add("tunnel_ecmp", "set_nhop", [str(in_port), str(tunnel_id)], [str(out_port)])
                     #todo 添加封装表
-                    self.controllers[pe1].table_add("wether_encap", "encap", [str(in_port), str(tunnel_id)], [str(out_port)])
+                    self.controllers[pe1].table_add("whether_encap", "encap", [str(in_port), str(tunnel_id)], [str(out_port)])
 
                 #设置pe2的表
                 pre_sw = path[path.index(pe2) - 1]
                 in_port = self.topo.node_to_node_port_num(pe1, pre_sw)
                 for host in self.topo.get_hosts_connected_to(pe2):
                     out_port = self.topo.node_to_node_port_num(pe2, host)
-                    pw_id = self.get_pw_id(host)#todo
-                    self.controllers[pe1].table_add("wether_decap_nhop", "decap_nhop", [str(in_port), str(pw_id)], [str(out_port)])
+                    pw_id = self.get_pw_id(pre_sw, host)
+                    self.controllers[pe2].table_add("whether_decap_nhop", "decap_nhop", [str(in_port), str(pw_id)], [str(out_port)])
 
                 for(sw in path[1:-1]):#todo  设置路径中间的节点的表
 
             else:#todo ecmp 
         
                     
+                self.controller.mc_mgrp_create(mc_grp_id)
+                tunnel_port_list = [out_port]
+                handle = self.controllers[pe].mc_node_create(tunnel_id, tunnel_port_list) ##为PE参与的每个隧道创建一个多播组
+                self.controllers[pe].mc_node_associate(mc_grp_id, handle)
+                mc_grp_id += 1            
 
-
-
-
+        
+        ## muilticast: 1. 获取PE到隧道端口的映射 2. 获取PE到主机端口的映射 3. 非PE直接forward packet
+        #    for pe_to_tunnel_ports in self.sw_to_tunnel_ports(pe):
+        #       for tunnel in self.port_to_tunnel(pe, pe_to_tunnel_ports):
+        #            tunnel_id = self.tunnel_list.index(tunnel) + 1
+        #            self.controller.mc_mgrp_create(mc_grp_id)
+        #            tunnel_port_list = []
+        #            tunnel_port_list.append(pe_to_tunnel_ports)
+        #            handle = self.controllers[pe].mc_node_create(tunnel_id, tunnel_port_list) ##为PE参与的每个隧道创建一个多播组
+        #            self.controllers[pe].mc_node_associate(mc_grp_id, handle)
+        #            mc_grp_id += 1
 
         for pe in self.pe_list:
-            ## muilticast: 1. 获取PE到隧道端口的映射 2. 获取PE到主机端口的映射 3. 非PE直接forward packet
-            for pe_to_tunnel_ports in self.sw_to_tunnel_ports(pe):
-                for tunnel in self.port_to_tunnel(pe, pe_to_tunnel_ports):
-                    tunnel_id = self.tunnel_list.index(tunnel) + 1
-                    self.controller.mc_mgrp_create(mc_grp_id)
-                    tunnel_port_list = []
-                    tunnel_port_list.append(pe_to_tunnel_ports)
-                    handle = self.controllers[pe].mc_node_create(tunnel_id, tunnel_port_list) ##为PE参与的每个隧道创建一个多播组
-                    self.controllers[pe].mc_node_associate(mc_grp_id, handle)
-                    mc_grp_id += 1
-
-            for pe_to_host_ports in self.sw_to_host_ports(pe):
-                pw_id = self.get_pw_id(pe)
+            for host in self.topo.get_hosts_connected_to(pe):
+                pw_id = self.get_pw_id(pe, host)
+                host_port = self.topo.node_to_node_port_num(pe, host)
                 self.controller.mc_mgrp_create(mc_grp_id)
-                host_port_list = []
-                host_port_list.append(pe_to_host_ports)
-                handle = self.controllers[pe].mc_node_create(pw_id, host_port_list) ##为PE参与的每个主机创建一个多播组
+                host_port_list = [host_port]
+                handle = self.controllers[pe].mc_node_create(pw_id, host_port_list)
                 self.controllers[pe].mc_node_associate(mc_grp_id, handle)
                 mc_grp_id += 1
 
