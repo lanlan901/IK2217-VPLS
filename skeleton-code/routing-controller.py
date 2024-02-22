@@ -114,25 +114,18 @@ class RoutingController(object):
     def get_switch_id(self, sw_name):
         return "{:02x}".format(self.topo.get_p4switches()[sw_name]["sw_id"])
 
-    def generate_tunnel_list(self):
-        pe_switches = []
-        for sw_name in self.topo.get_p4switches():
+    def generate_tunnel_list(self): ##返回经过所有交换机的隧道列表
+        pe = []
+        tunnel_list = []
+        for sw_name in self.topo.get_p4switches().keys():
             if len(self.topo.get_hosts_connected_to(sw_name)) != 0:
-                pe_switches.append(sw_name)
-        pe_pairs = list(itertools.combinations(pe_switches, 2))
+                pe.append(sw_name)
+        pe_pairs = list(itertools.combinations(pe, 2))
         for sw in pe_pairs:
             paths = self.topo.get_shortest_paths_between_nodes(sw[0], sw[1])
             for path in paths:
-                tunnel_ports = self.get_path_ports(path)
-                self.tunnel_list.append(tunnel_ports)
-
-    def get_path_ports(self, path):
-        ports = []
-        for i in range(len(path) - 1):
-            sw_name, next_sw_name = path[i], path[i + 1]
-            port_num = self.topo.node_to_node_port_num(sw_name, next_sw_name)
-            ports.append((sw_name, port_num))
-        return ports
+                tunnel_list.append(path)
+        self.tunnel_list = tunnel_list
 
     def get_pw_id(self, sw_name):
         customer_to_pw_id = {}
