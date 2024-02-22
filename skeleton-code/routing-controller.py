@@ -117,19 +117,28 @@ class RoutingController(object):
 
     def generate_tunnel_list(self): ##返回经过所有交换机的隧道列表
         pe = []
+        tunnel_dict = {}
         tunnel_path_list = []
         for sw_name in self.topo.get_p4switches().keys():
             if len(self.topo.get_hosts_connected_to(sw_name)) != 0:
                 pe.append(sw_name)
         pe_pairs = list(itertools.combinations(pe, 2))
-        for sw in pe_pairs:
-            paths = self.topo.get_shortest_paths_between_nodes(sw[0], sw[1])
+        for sw_pair in pe_pairs:
+            paths = self.topo.get_shortest_paths_between_nodes(sw_pair[0], sw_pair[1])
+            tunnel_dict[tuple(sorted(sw_pair))] = paths
             #for path in paths:
             tunnel_path_list.append(paths)
         self.tunnel_path_list = tunnel_path_list
+        self.tunnel_dict = tunnel_dict
         self.pe_pairs = pe_pairs
 
     def get_pw_id(self, sw_name, host_name): #连接到特定交换机的特定主机和pw_id的映射
+        port_num = self.topo.node_to_node_port_num(sw_name, host_name)
+        customer_label = self.vpls_conf['hosts'][host_name]
+        pw_id = hash(customer_label) %1024 + port_num
+        return pw_id
+    
+    def get_pw_id(self, sw_name, host_name): #PE对之间
         port_num = self.topo.node_to_node_port_num(sw_name, host_name)
         customer_label = self.vpls_conf['hosts'][host_name]
         pw_id = hash(customer_label) %1024 + port_num
@@ -250,6 +259,23 @@ class RoutingController(object):
                 handle = self.controllers[pe].mc_node_create(pw_id, host_port_list)
                 self.controllers[pe].mc_node_associate(mc_grp_id, handle)
                 mc_grp_id += 1
+
+        for non_pe in self.non_pe_list:
+            tunnel_list_non_pe = []
+            tunnel_id_list_non_pe = []
+            for tunnel in self.tunnel_path_list:
+                if non_pe in tunnel:
+                    tunnel_list_non_pe.append(tunnel)
+                    tunnel_id_list_non_pe.append(tunnel_id)##todo
+
+            for index in range(len(tunnel_list_non_pe)):
+                tunnel = tunnel_list_non_pe[index]
+                tunnel_id = tunnel_id_list_non_pe[index]
+                ports = self.get_tunnel_ports(tunnel, non_pe)
+                ##forward
+                self.controllers[non_pe].table_add('tunnel_forward_table', 'forward', [str(ports[0]), str(tunnel_id)], [str(ports[1])])
+                self.controllers[non_pe].table_add('tunnel_forward_table', 'forward', [str(ports[1]), str(tunnel_id)], [str(ports[0])])
+
 
         ### logic to be executed at the start-up of the topology
         ### hint: compute ECMP paths here

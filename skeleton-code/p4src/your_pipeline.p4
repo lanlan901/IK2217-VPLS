@@ -32,10 +32,6 @@ control MyIngress(inout headers hdr,
         standard_metadata.egress_spec = port;
     }
 
-    action tunnel_forward (egressSpec_t port) {
-        standard_metadata.egress_spec = port;
-    }
-
     //TASK 1 : normal forwarding table
     table forward_table {
         key = {
@@ -57,7 +53,7 @@ control MyIngress(inout headers hdr,
             hdr.tunnel.pw_id: exact;
         }
         actions = {
-            tunnel_forward;
+            forward;
             NoAction;
         }
         size = 1024;
