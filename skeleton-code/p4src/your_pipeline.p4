@@ -81,6 +81,7 @@ control MyIngress(inout headers hdr,
         //hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
     action decap_nhop(egressSpec_t port){
+        hdr.ethernet_outer.setInValid();
         hdr.tunnel.setInValid();
         standard_metadata.egress_spec = port;
     }
