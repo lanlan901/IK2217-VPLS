@@ -146,6 +146,7 @@ control MyIngress(inout headers hdr,
     table tunnel_multicast {
         key = {
             standard_metadata.ingress_port: exact;
+            hdr.tunnel.tunnel_id: exact;
         }
         actions = {
             set_mcast_grp;
