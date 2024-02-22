@@ -199,19 +199,56 @@ control MyIngress(inout headers hdr,
         default_action = NoAction;
     }
 
+    action decap(){
+        hdr.ethernet_outer.setInValid();
+        hdr.tunnel.setInValid();
+    }
+    table whether_decap {
+        key = {
+            standard_metadata.ingress_port: exact;
+        }
+        actions = {
+            decap;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction;
+    }
+
+
+    action decap_nhop(egressSpec_t port){
+        hdr.ethernet_outer.setInValid();
+        hdr.tunnel.setInValid();
+        standard_metadata.egress_spec = port;
+    }
+    table whether_decap_nhop {
+        key = {
+            standard_metadata.ingress_port: exact;
+            hdr.tunnel.pw_id: exact;
+        }
+        actions = {
+            decap_nhop;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction;
+    }
+
 
     apply {
         learning_table.apply();
         //匹配进入端口做转发（什么都不做留到else中处理）/封装
         whether_encap.apply();// encap or NoAction
+        //whether_decap.apply();// decap or NoAction
 
         if (hdr.tunnel.isValid()) {
+            whether_decap_nhop.apply();
             switch (tunnel_ecmp.apply().action_run) {// decap_nhop or set_nhop or ecmp_group or noaction
                 ecmp_group: {
                     ecmp_group_to_nhop.apply();
                 }
              }
-
+            //todo if dont know decap mac
             tunnel_multicast.apply();
         }
         else {

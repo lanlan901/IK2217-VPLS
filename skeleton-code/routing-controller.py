@@ -83,7 +83,8 @@ class RoutingController(object):
         self.controllers = {}
         self.vpls_conf_file = vpls_conf_file
         self.init()
-        self.tunnel_list = []
+        self.tunnel_path_list = []
+        self.pe_pairs = [] //按照相同角标存储两个pe 角标是id
         self.pe_list = []
         self.non_pe_list = []
 
@@ -116,16 +117,17 @@ class RoutingController(object):
 
     def generate_tunnel_list(self): ##返回经过所有交换机的隧道列表
         pe = []
-        tunnel_list = []
+        tunnel_path_list = []
         for sw_name in self.topo.get_p4switches().keys():
             if len(self.topo.get_hosts_connected_to(sw_name)) != 0:
                 pe.append(sw_name)
         pe_pairs = list(itertools.combinations(pe, 2))
         for sw in pe_pairs:
             paths = self.topo.get_shortest_paths_between_nodes(sw[0], sw[1])
-            for path in paths:
-                tunnel_list.append(path)
-        self.tunnel_list = tunnel_list
+            #for path in paths:
+            tunnel_path_list.append(paths)
+        self.tunnel_path_list = tunnel_path_list
+        self.pe_pairs = pe_pairs
 
     def get_pw_id(self, sw_name):
         customer_to_pw_id = {}
@@ -194,6 +196,47 @@ class RoutingController(object):
                 
     def process_network(self):
         mc_grp_id = 1
+
+        self.generate_tunnel_list()
+        self.get_pe_list()
+
+        for pe_pair in self.pe_pairs:
+            pe1 = pe_pair[0]
+            pe2 = pe_pair[1]
+            tunnel_id = pe_pairs.index(pe_pair)
+
+            paths =  tunnel_path_list[tunnel_id]
+
+            if len(paths) == 1:#如果这个隧道只有一条路径
+                path = paths[0]
+
+                #设置pe1的表
+                next_sw = path[path.index(pe1) + 1]
+                out_port = self.topo.node_to_node_port_num(pe1, next_sw)
+                for host in self.topo.get_hosts_connected_to(pe1):
+                    in_port = self.topo.node_to_node_port_num(pe1, host)
+                    self.controllers[pe1].table_add("tunnel_ecmp", "set_nhop", [str(in_port), str(tunnel_id)], [str(out_port)])
+                    #todo 添加封装表
+                    self.controllers[pe1].table_add("wether_encap", "encap", [str(in_port), str(tunnel_id)], [str(out_port)])
+
+                #设置pe2的表
+                pre_sw = path[path.index(pe2) - 1]
+                in_port = self.topo.node_to_node_port_num(pe1, pre_sw)
+                for host in self.topo.get_hosts_connected_to(pe2):
+                    out_port = self.topo.node_to_node_port_num(pe2, host)
+                    pw_id = self.get_pw_id(host)#todo
+                    self.controllers[pe1].table_add("wether_decap_nhop", "decap_nhop", [str(in_port), str(pw_id)], [str(out_port)])
+
+                for(sw in path[1:-1]):#todo  设置路径中间的节点的表
+
+            else:#todo ecmp 
+        
+                    
+
+
+
+
+
         for pe in self.pe_list:
             ## muilticast: 1. 获取PE到隧道端口的映射 2. 获取PE到主机端口的映射 3. 非PE直接forward packet
             for pe_to_tunnel_ports in self.sw_to_tunnel_ports(pe):
