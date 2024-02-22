@@ -176,6 +176,8 @@ control MyIngress(inout headers hdr,
 
     action encap(tunnel_id_t tunnel_id, pw_id_t pw_id) {
         hdr.ethernet_outer.setValid();
+        hdr.ethernet_outer.srcAddr = hdr.ethernet.srcAddr;
+        hdr.ethernet_outer.dstAddr = hdr.ethernet.dstAddr;
         hdr.ethernet_outer.etherType = TYPE_TUNNEL;
 
         hdr.tunnel.setValid();
