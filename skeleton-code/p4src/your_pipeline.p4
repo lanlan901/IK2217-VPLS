@@ -127,10 +127,9 @@ control MyIngress(inout headers hdr,
         standard_metadata.mcast_grp = mcast_grp;
     }
 
-    table customer_multicast {
+    table select_mcast_grp {
         key = {
-            hdr.tunnel.pw_id: exact;
-            hdr.ethernet.srcAddr: exact;
+            standard_metadata.ingress_port : exact;
         }
         actions = {
             set_mcast_grp;
@@ -140,18 +139,20 @@ control MyIngress(inout headers hdr,
         default_action = NoAction;
     }
 
-    table tunnel_multicast {
+    table dmac {
         key = {
-            standard_metadata.ingress_port: exact;
-            hdr.tunnel.tunnel_id: exact;
+            hdr.ethernet.dstAddr:exact;
         }
+
         actions = {
-            set_mcast_grp;
+            forward;
             NoAction;
         }
         size = 1024;
         default_action = NoAction;
     }
+
+    table 
 
     //TASK 4 : L2 learning
     action mac_learn() {

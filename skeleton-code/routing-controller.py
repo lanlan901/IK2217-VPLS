@@ -61,9 +61,8 @@ class EventBasedController(threading.Thread):
     def process_packet(self, packet_data):
         ### use exercise 04-Learning as a reference point
         for macAddr, ingress_port in packet_data:
-            self.controller.table_add('learning_table', 'mac_learn', [str(macAddr)], [])
-            self.controller.table_add('forward_table', 'forward', [str(macAddr)], [str(ingress_port)])
-            return
+            self.controller.table_add("learning_table", "NoAction", str[macAddr])
+            self.controller.table_add("forward_table", "forward", str[macAddr], str[ingress_port])
         pass
 
     def process_packet_rtt(self, packet_data):
@@ -157,6 +156,7 @@ class RoutingController(object):
         return ports
     
     def sw_to_tunnel_ports(self, sw_name): ##交换机到隧道端口
+        customer_to_tunnel_ports = {}
         ports = []
         for tunnel in self.tunnel_path_list:
             if sw_name in tunnel:
@@ -183,8 +183,9 @@ class RoutingController(object):
                     tunnels.append(tunnel)
         return tunnels
                 
+    
     def process_network(self):
-        mc_grp_id = 1
+
 
         self.generate_tunnel_list()
         self.get_pe_list()
@@ -253,41 +254,51 @@ class RoutingController(object):
         #            mc_grp_id += 1
 
         for pe in self.pe_list:
-
+            mc_grp_id = 1
             for pe_pair in self.pe_pairs:
                 tunnel_port_list = self.sw_to_tunnel_ports(pe)
                 pe1 = pe_pair[0]
                 pe2 = pe_pair[1]
                 tunnel_id = self.pe_pairs.index(pe_pair)
                 self.controllers[pe].mc_mgrp_create(mc_grp_id)
-                handle = self.controllers[pe].mc_node_create(tunnel_id, tunnel_port_list)
                 self.controllers[pe].mc_node_associate(mc_grp_id, handle)
                 for tunnel_port in tunnel_port_list:
                     self.controllers[pe].table_add('select_mcast_grp','set_mcast_grp', [str(tunnel_port)], [str(mc_grp_id)])
-                mc_grp_id += 1      
-
-            for host in self.topo.get_hosts_connected_to(pe):
+                mc_grp_id += 1
+                     
+                A_host_port_list = []
+                B_host_port_list = []
                 host_port_list = self.sw_to_host_ports(pe)
-                pw_id = self.get_pw_id(pe, host)
+                for host in self.topo.get_hosts_connected_to(pe):
+                    customer_id = self.vpls_conf['hosts'][host]
+                    port_num = self.topo.node_to_node_port_num(pe, host)
+                    if customer_id == 'A':
+                        A_host_port_list.append(port_num)
+                    if customer_id == 'B':
+                        B_host_port_list.append(port_num)
+                    pw_id = self.get_pw_id(pe, host)
+                    handle_A = self.controllers[pe].mc_node_create(pw_id, A_host_port_list)        
+                    handle_B = self.controllers[pe].mc_node_create(pw_id, B_host_port_list)
                 self.controllers[pe].mc_mgrp_create(mc_grp_id)
-                handle = self.controllers[pe].mc_node_create(pw_id, host_port_list) ##pw_id和主机端口列表的多播句柄
-                self.controllers[pe].mc_node_associate(mc_grp_id, handle)
+                self.controllers[pe].mc_node_associate(mc_grp_id, handle_A)
+                self.controllers[pe].mc_node_associate(mc_grp_id, handle_B)
                 for host_port in host_port_list:
                     self.controllers[pe].table_add('select_mcast_grp','set_mcast_grp', [str(host_port)], [str(mc_grp_id)])
-                mc_grp_id += 1
-
-
-
-
-
 
         for non_pe in self.non_pe_list:
+
             tunnel_list_non_pe = []
-            tunnel_id_list_non_pe = []
-            for tunnel in self.tunnel_path_list:
-                if non_pe in tunnel:
-                    tunnel_list_non_pe.append(tunnel)
-                    tunnel_id_list_non_pe.append(tunnel_id)##todo
+            tunnel_id_list_non_pe = [] 
+
+            for pe_pair in self.pe_pairs:
+                pe1 = pe_pair[0]
+                pe2 = pe_pair[1]
+                tunnel_id = self.pe_pairs.index(pe_pair)
+                paths =  self.tunnel_path_list[tunnel_id]
+                for path in paths:
+                    if non_pe in path:
+                        tunnel_list_non_pe.append(tunnel)
+                        tunnel_id_list_non_pe.append(tunnel_id)
 
             for index in range(len(tunnel_list_non_pe)):
                 tunnel = tunnel_list_non_pe[index]
@@ -296,10 +307,6 @@ class RoutingController(object):
                 ##forward
                 self.controllers[non_pe].table_add('tunnel_forward_table', 'forward', [str(ports[0]), str(tunnel_id)], [str(ports[1])])
                 self.controllers[non_pe].table_add('tunnel_forward_table', 'forward', [str(ports[1]), str(tunnel_id)], [str(ports[0])])
-
-
-        
-
 
         ### logic to be executed at the start-up of the topology
         ### hint: compute ECMP paths here
