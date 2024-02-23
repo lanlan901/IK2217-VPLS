@@ -84,7 +84,7 @@ class RoutingController(object):
         self.vpls_conf_file = vpls_conf_file
         self.init()
         self.tunnel_path_list = []
-        self.pe_pairs = [] //按照相同角标存储两个pe 角标是id
+        self.pe_pairs = [] #按照相同角标存储两个pe 角标是id
         self.pe_list = []
         self.non_pe_list = []
 
@@ -210,24 +210,41 @@ class RoutingController(object):
             if len(paths) == 1:#如果这个隧道只有一条路径
                 path = paths[0]
 
-                #设置pe1的表
-                next_sw = path[path.index(pe1) + 1]
-                out_port = self.topo.node_to_node_port_num(pe1, next_sw)
-                for host in self.topo.get_hosts_connected_to(pe1):
-                    in_port = self.topo.node_to_node_port_num(pe1, host)
-                    self.controllers[pe1].table_add("tunnel_ecmp", "set_nhop", [str(in_port), str(tunnel_id)], [str(out_port)])
-                    #todo 添加封装表
-                    self.controllers[pe1].table_add("whether_encap", "encap", [str(in_port), str(tunnel_id)], [str(out_port)])
+                #设置pe1 pe2的表
+                ex_sw1 = path[path.index(pe1) + 1]
+                sw_port1 = self.topo.node_to_node_port_num(pe1, ex_sw1)#与pe1相邻的sw的端口
+                ex_sw2 = path[path.index(pe2) - 1]
+                sw_port2 = self.topo.node_to_node_port_num(pe2, ex_sw2)#与pe2相邻的sw的端口
+                sw1_mac = self.topo.node_to_node_mac(ex_sw1, pe1)
+                sw2_mac = self.topo.node_to_node_mac(ex_sw2, pe2)
+                for host1 in self.topo.get_hosts_connected_to(pe1):
+                    for host2 in self.topo.get_hosts_connected_to(pe2):
+                        host_port1 = self.topo.node_to_node_port_num(pe1, host1)#与pe1相邻的host的端口
+                        host_port2 = self.topo.node_to_node_port_num(pe2, host2)#与pe2相邻的host的端口
+                        host1_mac = self.topo.get_host_mac(host1)
+                        host2_mac = self.topo.get_host_mac(host2)
+                        pw_id1 = self.get_pw_id(pe1, host1)
+                        pw_id2 = self.get_pw_id(pe2, host2)
+                        #设置已封装包的转发
+                        self.controllers[pe1].table_add("tunnel_ecmp", "set_nhop", [str(host_port1), str(tunnel_id)], [str(sw_port1)])
+                        self.controllers[pe2].table_add("tunnel_ecmp", "set_nhop", [str(host_port2), str(tunnel_id)], [str(sw_port2)])
+                        #设置封装包
+                        self.controllers[pe1].table_add("whether_encap", "encap", [str(host_port1), str(host1_mac), str(host2_mac)], 
+                                                        [str(tunnel_id), str(pw_id2)])
+                        self.controllers[pe2].table_add("whether_encap", "encap", [str(host_port2), str(host2_mac), str(host1_mac)], 
+                                                        [str(tunnel_id), str(pw_id1)])
+                        #设置解封包
+                        self.controllers[pe1].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port1), str(pw_id1)], [str(host_port1)])
+                        self.controllers[pe2].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port2), str(pw_id2)], [str(host_port2)])
 
-                #设置pe2的表
-                pre_sw = path[path.index(pe2) - 1]
-                in_port = self.topo.node_to_node_port_num(pe1, pre_sw)
-                for host in self.topo.get_hosts_connected_to(pe2):
-                    out_port = self.topo.node_to_node_port_num(pe2, host)
-                    pw_id = self.get_pw_id(pre_sw, host)
-                    self.controllers[pe2].table_add("whether_decap_nhop", "decap_nhop", [str(in_port), str(pw_id)], [str(out_port)])
+                for sw in path[1:-1]:#todo  设置路径中间的节点的表
+                    sw1 = path[path.index(sw) - 1]
+                    sw2 = path[path.index(sw) + 1]
+                    sw_port1 = self.topo.node_to_node_port_num(sw, sw1)#与pe1相邻的sw的端口
+                    sw_port2 = self.topo.node_to_node_port_num(sw, sw2)#与pe2相邻的sw的端口
+                    self.controllers[sw].table_add("tunnel_ecmp", "set_nhop", [str(sw_port1), str(tunnel_id)], [str(sw_port2)])
+                    self.controllers[sw].table_add("tunnel_ecmp", "set_nhop", [str(sw_port2), str(tunnel_id)], [str(sw_port1)])
 
-                for(sw in path[1:-1]):#todo  设置路径中间的节点的表
 
             else:#todo ecmp 
         
