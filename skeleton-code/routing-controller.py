@@ -63,6 +63,9 @@ class EventBasedController(threading.Thread):
         for macAddr, ingress_port in packet_data:
             self.controller.table_add("learning_table", "NoAction", str[macAddr])
             self.controller.table_add("forward_table", "forward", str[macAddr], str[ingress_port])
+            print(f"on {str(self.sw_name)}: Adding to learning_table with action NoAction: keys = [{str(macAddr)}], values = []")
+            print(f"on {str(self.sw_name)}: Adding to forward_table with action forward: keys = [{str(macAddr)}], values = [{str(ingress_port)}]")
+
         pass
 
     def process_packet_rtt(self, packet_data):
@@ -228,6 +231,16 @@ class RoutingController(object):
                         self.controllers[pe1].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port1), str(pw_id1)], [str(host_port1)])
                         self.controllers[pe2].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port2), str(pw_id2)], [str(host_port2)])
 
+                        print(f"on {str(pe1)}: Adding to tunnel_ecmp with action set_nhop: keys = [{str(host_port1)}, {str(tunnel_id)}], values = [{str(sw_port1)}]")
+                        print(f"on {str(pe2)}: Adding to tunnel_ecmp with action set_nhop: keys = [{str(host_port2)}, {str(tunnel_id)}], values = [{str(sw_port2)}]")
+
+                        print(f"on {str(pe1)}: Adding to whether_encap with action encap: keys = [{str(host_port1)}, {str(host1_mac)}, {str(host2_mac)}], values = [{str(tunnel_id)}, {str(pw_id2)}]")
+                        print(f"on {str(pe2)}: Adding to whether_encap with action encap: keys = [{str(host_port2)}, {str(host2_mac)}, {str(host1_mac)}], values = [{str(tunnel_id)}, {str(pw_id1)}]")
+
+                        print(f"on {str(pe1)}: Adding to whether_decap_nhop with action decap_nhop: keys = [{str(sw_port1)}, {str(pw_id1)}], values = [{str(host_port1)}]")
+                        print(f"on {str(pe2)}: Adding to whether_decap_nhop with action decap_nhop: keys = [{str(sw_port2)}, {str(pw_id2)}], values = [{str(host_port2)}]")
+
+
                 for sw in path[1:-1]:#设置路径中间的节点的表
                     sw1 = path[path.index(sw) - 1]
                     sw2 = path[path.index(sw) + 1]
@@ -235,6 +248,8 @@ class RoutingController(object):
                     sw_port2 = self.topo.node_to_node_port_num(sw, sw2)#与pe2相邻的sw的端口
                     self.controllers[sw].table_add("tunnel_ecmp", "set_nhop", [str(sw_port1), str(tunnel_id)], [str(sw_port2)])
                     self.controllers[sw].table_add("tunnel_ecmp", "set_nhop", [str(sw_port2), str(tunnel_id)], [str(sw_port1)])
+                    print(f"on {str(sw)}: Adding to tunnel_ecmp with action set_nhop: keys = [{str(sw_port1)}, {str(tunnel_id)}], values = [{str(sw_port2)}]")
+                    print(f"on {str(sw)}: Adding to tunnel_ecmp with action set_nhop: keys = [{str(sw_port2)}, {str(tunnel_id)}], values = [{str(sw_port1)}]")
 
 
             else:#todo ecmp 多条路径
@@ -255,6 +270,9 @@ class RoutingController(object):
                         sw_port2 = self.topo.node_to_node_port_num(sw, sw2)#与pe2相邻的sw的端口
                         self.controllers[sw].table_add("tunnel_ecmp", "set_nhop", [str(sw_port1), str(tunnel_id)], [str(sw_port2)])
                         self.controllers[sw].table_add("tunnel_ecmp", "set_nhop", [str(sw_port2), str(tunnel_id)], [str(sw_port1)])
+                        print(f"on {str(sw)}: Adding to tunnel_ecmp with action set_nhop: keys = [{str(sw_port1)}, {str(tunnel_id)}], values = [{str(sw_port2)}]")
+                        print(f"on {str(sw)}: Adding to tunnel_ecmp with action set_nhop: keys = [{str(sw_port2)}, {str(tunnel_id)}], values = [{str(sw_port1)}]")
+
 
                 ecmp_group_id1 = ecmp_group_id#此tunnel中给pe1分配的groupid
                 ecmp_group_id2 = ecmp_group_id + 1
@@ -263,7 +281,9 @@ class RoutingController(object):
                 for i in range(len(sw1_ports)):#设置好ecmptonhop  对应hash值
                     self.controllers[pe1].table_add("ecmp_group_to_nhop", "set_nhop", [str(ecmp_group_id1), str(i)], [str(sw1_ports[i])])
                     self.controllers[pe2].table_add("ecmp_group_to_nhop", "set_nhop", [str(ecmp_group_id2), str(i)], [str(sw2_ports[i])])
-                    
+                    print(f"on {str(pe1)}: Adding to ecmp_group_to_nhop with action set_nhop: keys = [{str(ecmp_group_id1)}, {str(i)}], values = [{str(sw1_ports[i])}]")
+                    print(f"on {str(pe2)}: Adding to ecmp_group_to_nhop with action set_nhop: keys = [{str(ecmp_group_id2)}, {str(i)}], values = [{str(sw2_ports[i])}]")
+
                 
                 for host1 in self.topo.get_hosts_connected_to(pe1):
                         for host2 in self.topo.get_hosts_connected_to(pe2):
@@ -287,7 +307,15 @@ class RoutingController(object):
                             #设置解封包
                             self.controllers[pe1].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port1), str(pw_id1)], [str(host_port1)])
                             self.controllers[pe2].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port2), str(pw_id2)], [str(host_port2)])
-          
+                            print(f"on {str(pe1)}: Adding to tunnel_ecmp with action ecmp_group: keys = [{str(host_port1)}, {str(tunnel_id)}], values = [{str(ecmp_group_id1)}, {str(len(sw1_ports))}]")
+                            print(f"on {str(pe2)}: Adding to tunnel_ecmp with action ecmp_group: keys = [{str(host_port2)}, {str(tunnel_id)}], values = [{str(ecmp_group_id2)}, {str(len(sw2_ports))}]")
+
+                            print(f"on {str(pe1)}: Adding to whether_encap with action encap: keys = [{str(host_port1)}, {str(host1_mac)}, {str(host2_mac)}], values = [{str(tunnel_id)}, {str(pw_id2)}]")
+                            print(f"on {str(pe2)}: Adding to whether_encap with action encap: keys = [{str(host_port2)}, {str(host2_mac)}, {str(host1_mac)}], values = [{str(tunnel_id)}, {str(pw_id1)}]")
+
+                            print(f"on {str(pe1)}: Adding to whether_decap_nhop with action decap_nhop: keys = [{str(sw_port1)}, {str(pw_id1)}], values = [{str(host_port1)}]")
+                            print(f"on {str(pe2)}: Adding to whether_decap_nhop with action decap_nhop: keys = [{str(sw_port2)}, {str(pw_id2)}], values = [{str(host_port2)}]")
+
 
         
         ## muilticast: 1. 获取PE到隧道端口的映射 2. 获取PE到主机端口的映射 3. 非PE直接forward packet
@@ -312,6 +340,7 @@ class RoutingController(object):
                 self.controllers[pe].mc_node_associate(mc_grp_id, handle)
                 for tunnel_port in tunnel_port_list:
                     self.controllers[pe].table_add('select_mcast_grp','set_mcast_grp', [str(tunnel_port)], [str(mc_grp_id)])
+                    print(f"on {str(pe)}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{str(tunnel_port)}], values = [{str(mc_grp_id)}]")
                 mc_grp_id += 1
                      
                 A_host_port_list = []
@@ -332,6 +361,7 @@ class RoutingController(object):
                 self.controllers[pe].mc_node_associate(mc_grp_id, handle_B)
                 for host_port in host_port_list:
                     self.controllers[pe].table_add('select_mcast_grp','set_mcast_grp', [str(host_port)], [str(mc_grp_id)])
+                    print(f"on {str(pe)}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{str(host_port)}], values = [{str(mc_grp_id)}]")
 
         for non_pe in self.non_pe_list:
 
@@ -355,6 +385,8 @@ class RoutingController(object):
                 ##forward
                 self.controllers[non_pe].table_add('tunnel_forward_table', 'forward', [str(ports[0]), str(tunnel_id)], [str(ports[1])])
                 self.controllers[non_pe].table_add('tunnel_forward_table', 'forward', [str(ports[1]), str(tunnel_id)], [str(ports[0])])
+                print(f"on {str(non_pe)}: Adding to tunnel_forward_table with action forward: keys = [{str(ports[0])}, {str(tunnel_id)}], values = [{str(ports[1])}]")
+                print(f"on {str(non_pe)}: Adding to tunnel_forward_table with action forward: keys = [{str(ports[1])}, {str(tunnel_id)}], values = [{str(ports[0])}]")
 
         ### logic to be executed at the start-up of the topology
         ### hint: compute ECMP paths here
