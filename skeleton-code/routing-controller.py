@@ -93,6 +93,7 @@ class RoutingController(object):
         self.pe_pairs = []
         self.pe_list = []
         self.non_pe_list = []
+        self.whether_single = False
 
     def init(self):
         self.connect_to_switches()
@@ -130,6 +131,9 @@ class RoutingController(object):
                 pe.append(sw_name)
                 print("pe:{}".format(pe))
         pe_pairs = list(itertools.combinations(pe, 2))
+        if len(pe) == 0:
+            self.whether_single = True   
+
         for sw_pair in pe_pairs:
             paths = self.topo.get_shortest_paths_between_nodes(sw_pair[0], sw_pair[1])
             tunnel_dict[tuple(sorted(sw_pair))] = paths
@@ -201,6 +205,35 @@ class RoutingController(object):
         ecmp_group_id = 0
         mc_grp_id = 1
 
+        if(self.whether_single):
+            pe = self.pe_list
+            hosts = self.topo.get_hosts_connected_to(pe)
+            host_pairs = list(itertools.combinations(hosts, 2))
+
+            for host_pair in host_pairs:
+                host1 = host_pair[0]
+                host2 = host_pair[1]
+                host1_port = self.topo.node_to_node_port_num(pe, host1)
+                host1_mac = self.topo.get_host_mac(host1)
+                host2_port = self.topo.node_to_node_port_num(pe, host2)
+                host2_mac = self.topo.get_host_mac(host2)
+
+                self.controllers[pe].table_add("forward_table", "forward", [str(host1_port), str(host2_mac)], [str(host2_port)])
+                self.controllers[pe].table_add("forward_table", "forward", [str(host2_port), str(host1_mac)], [str(host1_port)])
+
+            mcast_grp_id = 0;    
+            ports = self.sw_to_host_ports(pe)
+
+            for host in hosts:
+                pw_id = self.get_pw_id(pe, host)
+                host_port = self.topo.node_to_node_port_num(pe, host)
+                ports_temp = ports.remove(host_port)
+                
+                self.controller.mc_mgrp_create(mcast_grp_id, ports_temp)
+                self.controllers[pe].table_add("customer_multicast", "set_mcast_grp", [str(host_port), str(pw_id)], [str(mcast_grp_id)])
+                mcast_grp_id = mcast_grp_id + 1
+
+
         for pe_pair in self.pe_pairs:
             print("generate_pe_pairs")
             pe1 = pe_pair[0]
@@ -209,7 +242,7 @@ class RoutingController(object):
            
 
             paths =  self.tunnel_path_list[tunnel_id]
-
+            
             if len(paths) == 1:#如果这个隧道只有一条路径
                 path = paths[0]
 
