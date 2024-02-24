@@ -189,6 +189,7 @@ class RoutingController(object):
 
         self.generate_tunnel_list()
         self.get_pe_list()
+        ecmp_group_id = 0
 
         for pe_pair in self.pe_pairs:
             pe1 = pe_pair[0]
@@ -227,7 +228,7 @@ class RoutingController(object):
                         self.controllers[pe1].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port1), str(pw_id1)], [str(host_port1)])
                         self.controllers[pe2].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port2), str(pw_id2)], [str(host_port2)])
 
-                for sw in path[1:-1]:#todo  设置路径中间的节点的表
+                for sw in path[1:-1]:#设置路径中间的节点的表
                     sw1 = path[path.index(sw) - 1]
                     sw2 = path[path.index(sw) + 1]
                     sw_port1 = self.topo.node_to_node_port_num(sw, sw1)#与pe1相邻的sw的端口
@@ -236,9 +237,56 @@ class RoutingController(object):
                     self.controllers[sw].table_add("tunnel_ecmp", "set_nhop", [str(sw_port2), str(tunnel_id)], [str(sw_port1)])
 
 
-            else:#todo ecmp 
-        
+            else:#todo ecmp 多条路径
+                sw1_ports = []
+                sw2_ports = []
+                for path in paths:
+                    ex_sw1 = path[path.index(pe1) + 1]
+                    sw_port1 = self.topo.node_to_node_port_num(pe1, ex_sw1)#与pe1相邻的sw的端口
+                    sw1_ports.append(sw_port1)
+                    ex_sw2 = path[path.index(pe2) - 1]
+                    sw_port2 = self.topo.node_to_node_port_num(pe2, ex_sw2)#与pe2相邻的sw的端口
+                    sw2_ports.append(sw_port2)
+
+                    for sw in path[1:-1]:#设置路径中间的节点的表
+                        sw1 = path[path.index(sw) - 1]
+                        sw2 = path[path.index(sw) + 1]
+                        sw_port1 = self.topo.node_to_node_port_num(sw, sw1)#与pe1相邻的sw的端口
+                        sw_port2 = self.topo.node_to_node_port_num(sw, sw2)#与pe2相邻的sw的端口
+                        self.controllers[sw].table_add("tunnel_ecmp", "set_nhop", [str(sw_port1), str(tunnel_id)], [str(sw_port2)])
+                        self.controllers[sw].table_add("tunnel_ecmp", "set_nhop", [str(sw_port2), str(tunnel_id)], [str(sw_port1)])
+
+                ecmp_group_id1 = ecmp_group_id#此tunnel中给pe1分配的groupid
+                ecmp_group_id2 = ecmp_group_id + 1
+                ecmp_group_id = ecmp_group_id + 2
+
+                for i in range(len(sw1_ports)):#设置好ecmptonhop  对应hash值
+                    self.controllers[pe1].table_add("ecmp_group_to_nhop", "set_nhop", [str(ecmp_group_id1), str(i)], [str(sw1_ports[i])])
+                    self.controllers[pe2].table_add("ecmp_group_to_nhop", "set_nhop", [str(ecmp_group_id2), str(i)], [str(sw2_ports[i])])
                     
+                
+                for host1 in self.topo.get_hosts_connected_to(pe1):
+                        for host2 in self.topo.get_hosts_connected_to(pe2):
+                            host_port1 = self.topo.node_to_node_port_num(pe1, host1)#与pe1相邻的host的端口
+                            host_port2 = self.topo.node_to_node_port_num(pe2, host2)#与pe2相邻的host的端口
+                            host1_mac = self.topo.get_host_mac(host1)
+                            host2_mac = self.topo.get_host_mac(host2)
+                            pw_id1 = self.get_pw_id(pe1, host1)
+                            pw_id2 = self.get_pw_id(pe2, host2)
+
+                            #设置ecmp组
+                            self.controllers[pe1].table_add("tunnel_ecmp", "ecmp_group", 
+                                                            [str(host_port1), str(tunnel_id)], [str(ecmp_group_id1), str(len(sw1_ports))])
+                            self.controllers[pe2].table_add("tunnel_ecmp", "ecmp_group", 
+                                                            [str(host_port2), str(tunnel_id)], [str(ecmp_group_id2), str(len(sw2_ports))])
+                            #设置封装
+                            self.controllers[pe1].table_add("whether_encap", "encap", [str(host_port1), str(host1_mac), str(host2_mac)], 
+                                                        [str(tunnel_id), str(pw_id2)])
+                            self.controllers[pe2].table_add("whether_encap", "encap", [str(host_port2), str(host2_mac), str(host1_mac)], 
+                                                        [str(tunnel_id), str(pw_id1)])
+                            #设置解封包
+                            self.controllers[pe1].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port1), str(pw_id1)], [str(host_port1)])
+                            self.controllers[pe2].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port2), str(pw_id2)], [str(host_port2)])
           
 
         
