@@ -63,16 +63,44 @@ class EventBasedController(threading.Thread):
                 [(rtt_header.customer_id, rtt_header.ip_addr_src, rtt_header.ip_addr_dst, rtt_header.rtt)])
 
     def process_packet(self, packet_data):
-        ### use exercise 04-Learning as a reference point
-        for macAddr, ingress_port in packet_data:
-            self.controller.table_add("learning_table", "NoAction", str[macAddr])
-            self.controller.table_add("forward_table", "forward", str[macAddr], str[ingress_port])
-            print("on {}: Adding to learning_table with action NoAction: keys = [{}], values = []".format(self.sw_name, macAddr))
-            print("on {}: Adding to forward_table with action forward: keys = [{}], values = [{}]".format(self.sw_name, macAddr, ingress_port))
-
-
+        for macAddr, tunnel_id, pw_id, ingress_port in packet_data:
+            ##学习源MAC
+            self.controller.table_add('learning_table', 'NoAction', [str(macAddr)], [])
+            #来自主机的包
+            if tunnel_id < 0:
+                for port in self.interface.sw_to_host_ports(self.sw_name):
+                    egress_spec = port
+                    ##如果不是进来的端口且客户标签一致则转发到对应主机
+                    if port != ingress_port and self.interface.mac_to_customer(self.sw_name)[macAddr] == self.interface.ports_to_customer_mapping(self.sw_name)[port]:
+                        self.controller.table_add('forward_table', 'forward', [str(ingress_port), str(macAddr)], [str(egress_spec)])
+                        self.controller.table_add('tunnel_forward_table', 'forward', [str(ingress_port), str(pw_id)], [str(egress_spec)])
+                    ##否则尝试封装并发到隧道
+                    else:
+                        self.controller.table_add('whether_encap_egress', 'encap_egress', [str(egress_spec)], [str(tunnel_id), str(pw_id)])
+            #来自隧道的包
+            else:
+                tunnel = self.interface.tunnel_path_list[tunnel_id]
+                for port in self.interface.sw_to_host_ports(self.sw_name):
+                ##如果源mac对应的客户id 和 当前PE的主机端口对应的客户id一致则转发
+                    if self.interface.mac_to_customer(self.sw_name)[macAddr] == self.interface.ports_to_customer_mapping(self.sw_name)[port]:
+                        egress_spec = port
+                        self.controller.table_add('forward_table', 'forward', [str(ingress_port), str(macAddr)], [str(egress_spec)])
+                    else:
+                        continue
+                for port in self.interface.sw_to_tunnel_ports(self.sw_name):
+                    egress_spec = self.interface.get_tunnel_ports(tunnel, self.sw_name)[0]
+                    self.controller.table_add('tunnel_forward_table', 'forward', [str(ingress_port),str(tunnel_id)], [str(egress_spec)])
         pass
-
+            
+    def mac_to_customer_mapping(self, sw_name):
+        mac_to_customer = {}
+        connected_hosts = self.topo.get_hosts_connected_to(sw_name)
+        for host in connected_hosts:
+            customer_id = self.vpls_conf['hosts'][host]
+            host_mac = self.topo.get_host_mac(host)
+            mac_to_customer[host_mac] = customer_id
+        return mac_to_customer
+    
     def process_packet_rtt(self, packet_data):
         for customer_id, ip_addr_src, ip_addr_dst, rtt in packet_data:
             print("Customer_id: " + str(customer_id))
@@ -150,6 +178,16 @@ class RoutingController(object):
         pw_id = hash(customer_label) %1024 + port_num
         return pw_id
     
+    def get_pw_id_dic(self, sw_name): #连接到特定交换机下主机和pw_id的映射
+        pw_id_dic = {}
+        connected_hosts = self.topo.get_hosts_connected_to(sw_name)
+        for host in connected_hosts: 
+            port_num = self.topo.node_to_node_port_num(sw_name, host)
+            customer_label = self.vpls_conf['hosts'][host]
+            pw_id = hash(customer_label) %1024 + port_num
+            pw_id_dic[host] = pw_id
+        return pw_id_dic
+    
     def get_pe_list(self):
         for sw_name in self.topo.get_p4switches().keys():
             if len(self.topo.get_hosts_connected_to(sw_name)) > 0 :
@@ -190,20 +228,22 @@ class RoutingController(object):
             ports.append(port)
         return ports
 
-    def port_to_tunnel(self, sw_name, port): ##端口号参与的隧道列表
-        tunnels = []
-        for tunnel in self.tunnel_path_list:
-            if sw_name in tunnel:
-                if port in self.get_tunnel_ports(tunnel,sw_name):
-                    tunnels.append(tunnel)
-        return tunnels
-                
+    def ports_to_customer_mapping(self,sw_name):
+        ports_to_customer = {}
+        connected_hosts = self.topo.get_hosts_connected_to(sw_name)
+        for host in connected_hosts:
+            customer_id = self.vpls_conf['hosts'][host]
+            port_num = self.topo.node_to_node_port_num(sw_name, host)##交换机到主机的端口号
+            ports_to_customer[port_num].append(customer_id)
+        return ports_to_customer
+
+    
+
     def process_network(self):
 
         self.generate_tunnel_list()
         self.get_pe_list()
         ecmp_group_id = 0
-        mc_grp_id = 1
 
         if(self.whether_single):
             pe = self.pe_list
@@ -364,67 +404,52 @@ class RoutingController(object):
                             print("on {}: Adding to whether_decap_nhop with action decap_nhop: keys = [{}, {}], values = [{}]".format(pe2, sw_port2, pw_id2, host_port2))
 
 
-        ## muilticast: 1. 获取PE到隧道端口的映射 2. 获取PE到主机端口的映射 3. 非PE直接forward packet
+        ## muilticast: 1. 收到主机的包发送到相同客户标签的主机 和 隧道端口 
+        #2. 收到隧道的包发送到所有主机
+        # 3. 非PE直接forward packet
+        
+        for pe in self.pe_list:        
+            A_port_list = []
+            B_port_list = []
+            mc_grp_id_A = 1
+            mc_grp_id_B = 2
+            mc_grp_id_tunnel = 3
 
-        for pe_pair in self.pe_pairs: 
-            pe1 = pe_pair[0]
-            pe2 = pe_pair[1]
-            tunnel_id = self.pe_pairs.index(pe_pair)
-            
-            #起点
-            tunnel_port_list_1 = self.sw_to_tunnel_ports(pe1)
-            print("for pe_1:{}, tunnel_port_list:{}".format(pe1, tunnel_port_list_1))
-            self.controllers[pe1].mc_mgrp_create(mc_grp_id)
-            handle_1 = self.controllers[pe1].mc_node_create(tunnel_id, tunnel_port_list_1) 
-            self.controllers[pe1].mc_node_associate(mc_grp_id, handle_1)
-            for tunnel_port in tunnel_port_list_1:
-                self.controllers[pe1].table_add('select_mcast_grp','set_mcast_grp', [str(tunnel_port)], [str(mc_grp_id)])
-                print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe1, tunnel_port, mc_grp_id))
-            mc_grp_id += 1
+            host_port_list = self.sw_to_host_ports(pe)
+            tunnel_port_list = self.sw_to_tunnel_ports(pe)
 
-            #终点
-            tunnel_port_list_2 = self.sw_to_tunnel_ports(pe2)
-            print("for pe_2:{}, tunnel_port_list:{}".format(pe2, tunnel_port_list_2))
-            self.controllers[pe2].mc_mgrp_create(mc_grp_id)
-            handle_2 = self.controllers[pe1].mc_node_create(tunnel_id, tunnel_port_list_2) 
-            self.controllers[pe2].mc_node_associate(mc_grp_id, handle_2)
-            for tunnel_port in tunnel_port_list_2:
-                self.controllers[pe2].table_add('select_mcast_grp','set_mcast_grp', [str(tunnel_port)], [str(mc_grp_id)])
-                print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe2, tunnel_port, mc_grp_id))
-            mc_grp_id += 1
-
-            #主机端口
-            A1_host_port_list = []
-            B1_host_port_list = []
-            for host in self.topo.get_hosts_connected_to(pe1):
+            for host in self.topo.get_hosts_connected_to(pe): 
                 customer_id = self.vpls_conf['hosts'][host]
-                port_num1 = self.topo.node_to_node_port_num(pe1, host)
-                
+                port_num = self.topo.node_to_node_port_num(pe, host)
                 if customer_id == 'A':
-                    A1_host_port_list.append(port_num1)
+                    A_port_list.append(port_num)
                 if customer_id == 'B':
-                    B1_host_port_list.append(port_num1)
-            
-                print("for pe_1:{}, A_host_port_list:{}".format(pe1, A1_host_port_list))
-                print("for pe_1:{}, B_host_port_list:{}".format(pe1, B1_host_port_list))
+                    B_port_list.append(port_num)
 
-                pw_id = self.get_pw_id(pe1, host)
-                self.controllers[pe1].mc_mgrp_create(mc_grp_id)
-                handle_A1 = self.controllers[pe1].mc_node_create(pw_id, A1_host_port_list)        
-                self.controllers[pe1].mc_node_associate(mc_grp_id, handle_A1)
-                for host_port_A in A1_host_port_list:
-                    self.controllers[pe1].table_add('select_mcast_grp','set_mcast_grp', [str(host_port)], [str(mc_grp_id)])
-                    print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe1, host_port_A, mc_grp_id))
-                mc_grp_id += 1
+            if A_port_list: 
+                self.controllers[pe].mc_mgrp_create(mc_grp_id_A)
+                handle_A = self.controllers[pe].mc_node_create(0, A_port_list) ##rid = 0, 不用复制直接转发
+                self.controllers[pe].mc_node_associate(mc_grp_id_A, handle_A)
 
-                self.controllers[pe1].mc_mgrp_create(mc_grp_id)
-                handle_B1 = self.controllers[pe1].mc_node_create(pw_id, B1_host_port_list)
-                self.controllers[pe1].mc_node_associate(mc_grp_id, handle_B1)
-                for host_port_B in B1_host_port_list:
-                    self.controllers[pe1].table_add('select_mcast_grp','set_mcast_grp', [str(host_port)], [str(mc_grp_id)])
-                    print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe1, host_port_B, mc_grp_id))
-                mc_grp_id += 1 
+            if B_port_list:
+                self.controllers[pe].mc_mgrp_create(mc_grp_id_B)
+                handle_B = self.controllers[pe].mc_node_create(0, B_port_list)
+                self.controllers[pe].mc_node_associate(mc_grp_id_B, handle_B)
 
+            if tunnel_port_list:
+                self.controllers[pe].mc_mgrp_create(mc_grp_id_tunnel)
+                handle_tunnel = self.controllers[pe].mc_node_create(1, tunnel_port_list) ##rid = 1
+                self.controllers[pe].mc_node_associate(mc_grp_id_tunnel, handle_tunnel)
+
+            #来自主机的包
+            for ingress_port in host_port_list:
+                customer_id = self.ports_to_customer_mapping(pe)[ingress_port]
+                if customer_id == 'A':
+                    self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port)], [str(mc_grp_id_A)])
+                if customer_id == 'B':
+                    self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port)], [str(mc_grp_id_B)])
+            for ingress_port in tunnel_port_list:
+                self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port), str(pw_id)], [str(mc_grp_id_tunnel)])
 
         for non_pe in self.non_pe_list:
 
@@ -432,8 +457,6 @@ class RoutingController(object):
             tunnel_id_list_non_pe = [] 
 
             for pe_pair in self.pe_pairs:
-                pe1 = pe_pair[0]
-                pe2 = pe_pair[1]
                 tunnel_id = self.pe_pairs.index(pe_pair)
                 paths =  self.tunnel_path_list[tunnel_id]
                 for path in paths:
@@ -448,8 +471,6 @@ class RoutingController(object):
                 ##forward
                 self.controllers[non_pe].table_add('tunnel_forward_table', 'forward', [str(ports[0]), str(tunnel_id)], [str(ports[1])])
                 self.controllers[non_pe].table_add('tunnel_forward_table', 'forward', [str(ports[1]), str(tunnel_id)], [str(ports[0])])
-                print("on {}: Adding to tunnel_forward_table with action forward: keys = [{}, {}], values = [{}]".format(non_pe, ports[0], tunnel_id, ports[1]))
-                print("on {}: Adding to tunnel_forward_table with action forward: keys = [{}, {}], values = [{}]".format(non_pe, ports[1], tunnel_id, ports[0]))
 
 
         ### logic to be executed at the start-up of the topology
