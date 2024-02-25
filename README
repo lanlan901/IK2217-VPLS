@@ -1,0 +1,3 @@
+sudo p4run --config 01-methane-p4app.json
+sudo python routing-controller.py 01-methane-vpls.conf
+sudo bash skeleton-code/test_topology_01.sh
