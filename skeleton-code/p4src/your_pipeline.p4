@@ -25,7 +25,7 @@ control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
     action drop() {
-        mark_to_drop();
+        mark_to_drop(standard_metadata);
     }
 
     action forward (egressSpec_t port) {
@@ -76,9 +76,10 @@ control MyIngress(inout headers hdr,
         standard_metadata.egress_spec = port;
         //hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
+
     action decap_nhop(egressSpec_t port){
-        hdr.ethernet_outer.setInValid();
-        hdr.tunnel.setInValid();
+        hdr.ethernet_outer.setInvalid();
+        hdr.tunnel.setInvalid();
         standard_metadata.egress_spec = port;
     }
 
@@ -100,13 +101,12 @@ control MyIngress(inout headers hdr,
             meta.tunnel_id: exact;
         }
         actions = {
-            decap_nhop;
             set_nhop;
             ecmp_group;
-            NoAction;
+            drop;
         }
         size = 1024;
-        default_action = NoAction;
+        default_action = drop;
     }
 
     table ipv4_lpm {
@@ -152,13 +152,12 @@ control MyIngress(inout headers hdr,
         default_action = NoAction;
     }
 
-    table 
-
     //TASK 4 : L2 learning
     action mac_learn() {
         meta.ingress_port = standard_metadata.ingress_port;
         clone3(CloneType.I2E, 100, meta);
     }
+
     table learning_table {
         key = {
             hdr.ethernet.srcAddr: exact;
@@ -197,8 +196,8 @@ control MyIngress(inout headers hdr,
     }
 
     action decap(){
-        hdr.ethernet_outer.setInValid();
-        hdr.tunnel.setInValid();
+        hdr.ethernet_outer.setInvalid();
+        hdr.tunnel.setInvalid();
     }
     table whether_decap {
         key = {
@@ -212,12 +211,6 @@ control MyIngress(inout headers hdr,
         default_action = NoAction;
     }
 
-
-    action decap_nhop(egressSpec_t port){
-        hdr.ethernet_outer.setInValid();
-        hdr.tunnel.setInValid();
-        standard_metadata.egress_spec = port;
-    }
     table whether_decap_nhop {
         key = {
             standard_metadata.ingress_port: exact;
@@ -240,13 +233,11 @@ control MyIngress(inout headers hdr,
 
         if (hdr.tunnel.isValid()) {
             whether_decap_nhop.apply();
-            switch (tunnel_ecmp.apply().action_run) {// decap_nhop or set_nhop or ecmp_group or noaction
+            switch (tunnel_ecmp.apply().action_run) {//set_nhop or ecmp_group or drop
                 ecmp_group: {
                     ecmp_group_to_nhop.apply();
                 }
              }
-            //todo if dont know decap mac
-            tunnel_multicast.apply();
         }
         else {
             if (forward_table.apply().hit) { }
@@ -256,7 +247,8 @@ control MyIngress(inout headers hdr,
                 }
             }
             else if (tunnel_forward_table.apply().hit) { }
-            else customer_multicast.apply();
+            else if (dmac.apply().hit) { }
+            else select_mcast_grp.apply();
         }
     }
 }
