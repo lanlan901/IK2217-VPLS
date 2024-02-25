@@ -130,6 +130,7 @@ control MyIngress(inout headers hdr,
     table select_mcast_grp {
         key = {
             standard_metadata.ingress_port : exact;
+            hdr.tunnel.pw_id: exact;
         }
         actions = {
             set_mcast_grp;
@@ -139,18 +140,6 @@ control MyIngress(inout headers hdr,
         default_action = NoAction;
     }
 
-    table dmac {
-        key = {
-            hdr.ethernet.dstAddr:exact;
-        }
-
-        actions = {
-            forward;
-            NoAction;
-        }
-        size = 1024;
-        default_action = NoAction;
-    }
 
     //TASK 4 : L2 learning
     action mac_learn() {
@@ -247,7 +236,6 @@ control MyIngress(inout headers hdr,
                 }
             }
             else if (tunnel_forward_table.apply().hit) { }
-            else if (dmac.apply().hit) { }
             else select_mcast_grp.apply();
         }
     }
@@ -265,18 +253,18 @@ control MyEgress(inout headers hdr,
         mark_to_drop();
     }
 
-    action set_tunnel() {
+    action encap_egress(tunnel_id_t tunnel_id, pw_id_t pw_id)) {
         hdr.ethernet_outer.setValid();
         hdr.tunnel.setValid();
         hdr.ethernet.etherType = TYPE_TUNNEL;
-        hdr.tunnel.tunnel_id = meta.tunnel_id;
-        hdr.tunnel.pw_id = meta.pw_id;
+        hdr.tunnel.tunnel_id = tunnel_id;
+        hdr.tunnel.pw_id = pw_id;
     }
 
-    table tunnel_table {
+    table whether_encap_egress{
         key = { standard_metadata.egress_port: exact; }
         actions = {
-            set_tunnel;
+            encap_egress;
             NoAction;
         }
         size = 1024;
@@ -298,8 +286,9 @@ control MyEgress(inout headers hdr,
                 hdr.cpu.ingress_port = (bit<16>)meta.ingress_port;
             truncate((bit<32>)22);
             }
-        } else if (standard_metadata.egress_rid != 0) { //是复制包
-            tunnel_table.apply();
+        } ##rid不等于0，是要发到隧道里的封装包
+        else if (standard_metadata.egress_rid != 0) { 
+            whether_encap.apply();
         }
     }
 }
