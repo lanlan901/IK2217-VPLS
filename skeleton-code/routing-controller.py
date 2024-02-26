@@ -174,18 +174,8 @@ class RoutingController(object):
     def get_pw_id(self, sw_name, host_name): #连接到特定交换机的特定主机和pw_id的映射
         port_num = self.topo.node_to_node_port_num(sw_name, host_name)
         customer_label = self.vpls_conf['hosts'][host_name]
-        pw_id = hash(customer_label) %1024 + port_num
+        pw_id = hash(customer_label + sw_name) %1024 + port_num
         return pw_id
-    
-    def get_pw_id_dic(self, sw_name): #连接到特定交换机下主机和pw_id的映射
-        pw_id_dic = {}
-        connected_hosts = self.topo.get_hosts_connected_to(sw_name)
-        for host in connected_hosts: 
-            port_num = self.topo.node_to_node_port_num(sw_name, host)
-            customer_label = self.vpls_conf['hosts'][host]
-            pw_id = hash(customer_label + sw_name) %1024 + port_num
-            pw_id_dic[host] = pw_id
-        return pw_id_dic
     
     def get_pe_list(self):
         for sw_name in self.topo.get_p4switches().keys():
