@@ -473,8 +473,9 @@ class RoutingController(object):
                 if customer_id == 'B':
                     self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port)], [str(mc_grp_id_B)])
                     print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, ingress_port, mc_grp_id_B))
-            self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port)], [str(mc_grp_id_tunnel)])
-            print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, ingress_port, mc_grp_id_tunnel))
+            for ingress_port in tunnel_port_list:
+                self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port)], [str(mc_grp_id_tunnel)])
+                print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, ingress_port, mc_grp_id_tunnel))
 
         for non_pe in self.non_pe_list:
             non_pe_mcid = 4
