@@ -270,9 +270,6 @@ class RoutingController(object):
             #     handle = self.controllers[pe].mc_node_create(0, ports_temp)
             #     self.controllers[pe].mc_node_associate(mcast_grp_id, handle)
 
-                self.controllers[pe].table_add("customer_multicast", "set_mcast_grp", [str(host_port), str(pw_id)], [str(mcast_grp_id)])
-                print("on {}: Adding to customer_multicast with action set_mcast_grp: keys = [{}, {}], values = [{}]".format(pe, host_port, pw_id, mcast_grp_id))
-
             #     mcast_grp_id = mcast_grp_id + 1
 
 
