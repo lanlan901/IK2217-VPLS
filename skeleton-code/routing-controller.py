@@ -269,30 +269,25 @@ class RoutingController(object):
                 print("on {}: Adding to forward_table with action forward: keys = [{}, {}], values = [{}]".format(pe, host1_port, host2_mac, host2_port))
                 print("on {}: Adding to forward_table with action forward: keys = [{}, {}], values = [{}]".format(pe, host2_port, host1_mac, host1_port))
 
+            # mcast_grp_id = 1    
+            
+            # ports = self.sw_to_host_ports(pe)
+            # print(ports)
+            # for host in hosts:
+            #     pw_id = self.get_pw_id(pe, host)
+            #     host_port = self.topo.node_to_node_port_num(pe, host)
+            #     ports_temp = ports[:]
+            #     ports_temp.remove(host_port)
+            #     print(ports)
+            #     print(ports_temp)
+            #     self.controllers[pe].mc_mgrp_create(mcast_grp_id)
+            #     handle = self.controllers[pe].mc_node_create(0, ports_temp)
+            #     self.controllers[pe].mc_node_associate(mcast_grp_id, handle)
 
-            mcast_grp_id = 1    
-            ports = self.sw_to_host_ports(pe)
-            print(ports)
-            for host in hosts:
-                pw_id = self.get_pw_id(pe, host)
-                host_port = self.topo.node_to_node_port_num(pe, host)
-<<<<<<< HEAD
-                ports_temp = ports.remove(host_port)
-                print(mcast_grp_id)
-=======
-                ports_temp = ports[:]
-                ports_temp.remove(host_port)
-                print(ports)
-                print(ports_temp)
->>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
-                self.controllers[pe].mc_mgrp_create(mcast_grp_id)
-                handle = self.controllers[pe].mc_node_create(0, ports_temp)
-                self.controllers[pe].mc_node_associate(mcast_grp_id, handle)
+            #     self.controllers[pe].table_add("customer_multicast", "set_mcast_grp", [str(host_port)], [str(mcast_grp_id)])
+            #     print("on {}: Adding to customer_multicast with action set_mcast_grp: keys = [{}, {}], values = [{}]".format(pe, host_port, pw_id, mcast_grp_id))
 
-                self.controllers[pe].table_add("customer_multicast", "set_mcast_grp", [str(host_port)], [str(mcast_grp_id)])
-                print("on {}: Adding to customer_multicast with action set_mcast_grp: keys = [{}, {}], values = [{}]".format(pe, host_port, pw_id, mcast_grp_id))
-
-                mcast_grp_id = mcast_grp_id + 1
+            #     mcast_grp_id = mcast_grp_id + 1
 
 
         for pe_pair in self.pe_pairs:
@@ -300,8 +295,7 @@ class RoutingController(object):
             pe1 = pe_pair[0]
             pe2 = pe_pair[1]
             tunnel_id = self.pe_pairs.index(pe_pair)
-           
-
+        
             paths =  self.tunnel_path_list[tunnel_id]
             
             if len(paths) == 1:#如果这个隧道只有一条路径
