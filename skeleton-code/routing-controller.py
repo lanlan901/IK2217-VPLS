@@ -79,17 +79,18 @@ class EventBasedController(threading.Thread):
                         self.controller.table_add('whether_encap_egress', 'encap_egress', [str(egress_spec)], [str(tunnel_id), str(pw_id)])
             #来自隧道的包
             else:
-                tunnel = self.interface.tunnel_path_list[tunnel_id]
-                for port in self.interface.sw_to_host_ports(self.sw_name):
-                ##如果源mac对应的客户id 和 当前PE的主机端口对应的客户id一致则转发
-                    if self.interface.mac_to_customer(self.sw_name)[macAddr] == self.interface.ports_to_customer_mapping(self.sw_name)[port]:
-                        egress_spec = port
-                        self.controller.table_add('forward_table', 'forward', [str(ingress_port), str(macAddr)], [str(egress_spec)])
-                    else:
-                        continue
-                for port in self.interface.sw_to_tunnel_ports(self.sw_name):
-                    egress_spec = self.interface.get_tunnel_ports(tunnel, self.sw_name)[0]
-                    self.controller.table_add('tunnel_forward_table', 'forward', [str(ingress_port),str(tunnel_id),str(pw_id)], [str(egress_spec)])
+                paths = self.interface.tunnel_path_list[tunnel_id]
+
+                if len(paths) == 1:
+                    self.controller.table_add('forward_table', 'forward', [str(ingress_port), str(macAddr)], [str(egress_spec)])
+                    ##如果源mac对应的客户id 和 当前PE的主机端口对应的客户id一致则转发
+                else:
+                    for path in paths:
+                        egress_spec = self.interface.get_tunnel_ports(path, self.sw_name)[0]
+                        if self.interface.mac_to_customer(self.sw_name)[macAddr] == self.interface.ports_to_customer_mapping(self.sw_name)[port]:
+                            self.controller.table_add('forward_table', 'forward', [str(ingress_port), str(macAddr)], [str(egress_spec)])
+                        else:
+                            continue
         pass
             
     def mac_to_customer_mapping(self, sw_name):
