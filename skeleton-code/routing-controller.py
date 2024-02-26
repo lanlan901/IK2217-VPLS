@@ -272,12 +272,19 @@ class RoutingController(object):
 
             mcast_grp_id = 1    
             ports = self.sw_to_host_ports(pe)
-
+            print(ports)
             for host in hosts:
                 pw_id = self.get_pw_id(pe, host)
                 host_port = self.topo.node_to_node_port_num(pe, host)
+<<<<<<< HEAD
                 ports_temp = ports.remove(host_port)
                 print(mcast_grp_id)
+=======
+                ports_temp = ports[:]
+                ports_temp.remove(host_port)
+                print(ports)
+                print(ports_temp)
+>>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
                 self.controllers[pe].mc_mgrp_create(mcast_grp_id)
                 handle = self.controllers[pe].mc_node_create(0, ports_temp)
                 self.controllers[pe].mc_node_associate(mcast_grp_id, handle)

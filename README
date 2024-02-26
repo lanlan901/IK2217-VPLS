@@ -8,3 +8,5 @@ cd /
 cd media
 cd shared
 cd skeleton-code
+
+git diff master origin/master
