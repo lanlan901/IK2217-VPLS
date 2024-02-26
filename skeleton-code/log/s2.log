@@ -505,3 +505,274 @@ Adding interface s2-cpu-eth0 as port 4
 [11:02:06.829] [bmv2] [D] [thread 4473] [4.0] [cxt 0] Deparsing header 'ethernet_outer'
 [11:02:06.829] [bmv2] [D] [thread 4473] [4.0] [cxt 0] Deparser 'deparser': end
 [11:02:06.830] [bmv2] [D] [thread 4477] [4.0] [cxt 0] Transmitting packet of size 90 out of port 0
+[11:03:52.874] [bmv2] [T] [thread 4770] bm_get_config
+[11:03:52.882] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.884] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.885] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.886] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.886] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.887] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.888] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.889] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.889] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.890] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.891] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.892] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.892] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.893] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.894] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.894] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.895] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.896] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.897] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.897] [bmv2] [T] [thread 4770] bm_mt_get_entries
+[11:03:52.917] [bmv2] [T] [thread 4770] bm_reset_state
+[11:03:52.935] [bmv2] [D] [thread 4770] Resetting simple_switch target-specific state
+[11:03:52.935] [bmv2] [D] [thread 4770] resetting PRE state
+[11:03:52.966] [bmv2] [T] [thread 4772] mirroring_sesssion_add
+[11:03:52.993] [bmv2] [T] [thread 4770] bm_table_add_entry
+[11:03:52.993] [bmv2] [D] [thread 4770] Entry 0 added to table 'MyIngress.tunnel_ecmp'
+[11:03:52.994] [bmv2] [D] [thread 4770] Dumping entry 0
+Match key:
+* standard_metadata.ingress_port: EXACT     0001
+* meta.tunnel_id                : EXACT     0000
+Action entry: MyIngress.set_nhop - 3,
+
+[11:03:53.003] [bmv2] [T] [thread 4770] bm_table_add_entry
+[11:03:53.004] [bmv2] [D] [thread 4770] Entry 0 added to table 'MyIngress.whether_encap'
+[11:03:53.005] [bmv2] [D] [thread 4770] Dumping entry 0
+Match key:
+* standard_metadata.ingress_port: EXACT     0001
+* hdr.ethernet.srcAddr          : EXACT     00000a000002
+* hdr.ethernet.dstAddr          : EXACT     00000a000001
+Action entry: MyIngress.encap - 0,1c1,
+
+[11:03:53.016] [bmv2] [T] [thread 4770] bm_table_add_entry
+[11:03:53.016] [bmv2] [D] [thread 4770] Entry 0 added to table 'MyIngress.whether_decap_nhop'
+[11:03:53.017] [bmv2] [D] [thread 4770] Dumping entry 0
+Match key:
+* standard_metadata.ingress_port: EXACT     0003
+* hdr.tunnel.pw_id              : EXACT     01c1
+Action entry: MyIngress.decap_nhop - 1,
+
+[11:03:53.026] [bmv2] [T] [thread 4770] bm_table_add_entry
+[11:03:53.026] [bmv2] [E] [thread 4770] Error when trying to add entry to table 'MyIngress.tunnel_ecmp'
+[11:03:53.036] [bmv2] [T] [thread 4770] bm_table_add_entry
+[11:03:53.036] [bmv2] [E] [thread 4770] Error when trying to add entry to table 'MyIngress.whether_encap'
+[11:03:53.040] [bmv2] [T] [thread 4770] bm_table_add_entry
+[11:03:53.041] [bmv2] [E] [thread 4770] Error when trying to add entry to table 'MyIngress.whether_decap_nhop'
+[11:03:53.044] [bmv2] [T] [thread 4770] bm_table_add_entry
+[11:03:53.044] [bmv2] [D] [thread 4770] Entry 1 added to table 'MyIngress.tunnel_ecmp'
+[11:03:53.045] [bmv2] [D] [thread 4770] Dumping entry 1
+Match key:
+* standard_metadata.ingress_port: EXACT     0002
+* meta.tunnel_id                : EXACT     0000
+Action entry: MyIngress.set_nhop - 3,
+
+[11:03:53.047] [bmv2] [T] [thread 4770] bm_table_add_entry
+[11:03:53.048] [bmv2] [D] [thread 4770] Entry 1 added to table 'MyIngress.whether_encap'
+[11:03:53.049] [bmv2] [D] [thread 4770] Dumping entry 1
+Match key:
+* standard_metadata.ingress_port: EXACT     0002
+* hdr.ethernet.srcAddr          : EXACT     00000a000002
+* hdr.ethernet.dstAddr          : EXACT     00000a000001
+Action entry: MyIngress.encap - 0,1c1,
+
+[11:03:53.055] [bmv2] [T] [thread 4770] bm_table_add_entry
+[11:03:53.056] [bmv2] [D] [thread 4770] Entry 1 added to table 'MyIngress.whether_decap_nhop'
+[11:03:53.057] [bmv2] [D] [thread 4770] Dumping entry 1
+Match key:
+* standard_metadata.ingress_port: EXACT     0003
+* hdr.tunnel.pw_id              : EXACT     0345
+Action entry: MyIngress.decap_nhop - 2,
+
+[11:03:53.063] [bmv2] [T] [thread 4770] bm_table_add_entry
+[11:03:53.064] [bmv2] [E] [thread 4770] Error when trying to add entry to table 'MyIngress.tunnel_ecmp'
+[11:03:53.071] [bmv2] [T] [thread 4770] bm_table_add_entry
+[11:03:53.071] [bmv2] [E] [thread 4770] Error when trying to add entry to table 'MyIngress.whether_encap'
+[11:03:53.077] [bmv2] [T] [thread 4770] bm_table_add_entry
+[11:03:53.077] [bmv2] [E] [thread 4770] Error when trying to add entry to table 'MyIngress.whether_decap_nhop'
+[11:03:53.083] [bmv2] [T] [thread 4770] bm_mc_mgrp_create
+[11:03:53.084] [bmv2] [D] [thread 4770] mgrp node created for mgid 1
+[11:03:53.088] [bmv2] [T] [thread 4770] bm_mc_node_create
+[11:03:53.089] [bmv2] [D] [thread 4770] node created for rid 0
+[11:03:53.092] [bmv2] [T] [thread 4770] bm_mc_node_associate
+[11:03:53.092] [bmv2] [D] [thread 4770] node associated with mgid 1
+[11:03:53.096] [bmv2] [T] [thread 4770] bm_table_add_entry
+[11:03:53.097] [bmv2] [D] [thread 4770] Entry 0 added to table 'MyIngress.select_mcast_grp'
+[11:03:53.097] [bmv2] [D] [thread 4770] Dumping entry 0
+Match key:
+* standard_metadata.ingress_port: EXACT     0003
+Action entry: MyIngress.set_mcast_grp - 1,
+
+[11:03:53.111] [bmv2] [T] [thread 4770] bm_mc_node_associate
+[11:03:53.112] [bmv2] [E] [thread 4770] node associate failed, invalid mgrp handle
+[11:03:53.118] [bmv2] [T] [thread 4770] bm_mc_mgrp_create
+[11:03:53.118] [bmv2] [D] [thread 4770] mgrp node created for mgid 3
+[11:03:53.120] [bmv2] [T] [thread 4770] bm_mc_node_create
+[11:03:53.120] [bmv2] [D] [thread 4770] node created for rid 449
+[11:03:53.122] [bmv2] [T] [thread 4770] bm_mc_node_associate
+[11:03:53.122] [bmv2] [D] [thread 4770] node associated with mgid 3
+[11:05:11.503] [bmv2] [T] [thread 4880] bm_get_config
+[11:05:11.516] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.518] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.520] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.523] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.525] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.528] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.530] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.531] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.533] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.536] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.539] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.547] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.554] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.555] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.557] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.565] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.568] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.571] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.572] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.574] [bmv2] [T] [thread 4880] bm_mt_get_entries
+[11:05:11.595] [bmv2] [T] [thread 4880] bm_reset_state
+[11:05:11.601] [bmv2] [D] [thread 4880] Resetting simple_switch target-specific state
+[11:05:11.602] [bmv2] [D] [thread 4880] resetting PRE state
+[11:05:11.611] [bmv2] [T] [thread 4882] mirroring_sesssion_add
+[11:05:11.631] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.632] [bmv2] [D] [thread 4880] Entry 0 added to table 'MyIngress.tunnel_ecmp'
+[11:05:11.632] [bmv2] [D] [thread 4880] Dumping entry 0
+Match key:
+* standard_metadata.ingress_port: EXACT     0001
+* meta.tunnel_id                : EXACT     0000
+Action entry: MyIngress.set_nhop - 3,
+
+[11:05:11.645] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.646] [bmv2] [D] [thread 4880] Entry 0 added to table 'MyIngress.whether_encap'
+[11:05:11.648] [bmv2] [D] [thread 4880] Dumping entry 0
+Match key:
+* standard_metadata.ingress_port: EXACT     0001
+* hdr.ethernet.srcAddr          : EXACT     00000a000002
+* hdr.ethernet.dstAddr          : EXACT     00000a000001
+Action entry: MyIngress.encap - 0,1c1,
+
+[11:05:11.654] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.654] [bmv2] [D] [thread 4880] Entry 0 added to table 'MyIngress.whether_decap_nhop'
+[11:05:11.655] [bmv2] [D] [thread 4880] Dumping entry 0
+Match key:
+* standard_metadata.ingress_port: EXACT     0003
+* hdr.tunnel.pw_id              : EXACT     01c1
+Action entry: MyIngress.decap_nhop - 1,
+
+[11:05:11.669] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.670] [bmv2] [E] [thread 4880] Error when trying to add entry to table 'MyIngress.tunnel_ecmp'
+[11:05:11.681] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.681] [bmv2] [E] [thread 4880] Error when trying to add entry to table 'MyIngress.whether_encap'
+[11:05:11.689] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.690] [bmv2] [E] [thread 4880] Error when trying to add entry to table 'MyIngress.whether_decap_nhop'
+[11:05:11.699] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.700] [bmv2] [D] [thread 4880] Entry 1 added to table 'MyIngress.tunnel_ecmp'
+[11:05:11.700] [bmv2] [D] [thread 4880] Dumping entry 1
+Match key:
+* standard_metadata.ingress_port: EXACT     0002
+* meta.tunnel_id                : EXACT     0000
+Action entry: MyIngress.set_nhop - 3,
+
+[11:05:11.709] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.709] [bmv2] [D] [thread 4880] Entry 1 added to table 'MyIngress.whether_encap'
+[11:05:11.710] [bmv2] [D] [thread 4880] Dumping entry 1
+Match key:
+* standard_metadata.ingress_port: EXACT     0002
+* hdr.ethernet.srcAddr          : EXACT     00000a000002
+* hdr.ethernet.dstAddr          : EXACT     00000a000001
+Action entry: MyIngress.encap - 0,1c1,
+
+[11:05:11.718] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.719] [bmv2] [D] [thread 4880] Entry 1 added to table 'MyIngress.whether_decap_nhop'
+[11:05:11.720] [bmv2] [D] [thread 4880] Dumping entry 1
+Match key:
+* standard_metadata.ingress_port: EXACT     0003
+* hdr.tunnel.pw_id              : EXACT     0345
+Action entry: MyIngress.decap_nhop - 2,
+
+[11:05:11.731] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.732] [bmv2] [E] [thread 4880] Error when trying to add entry to table 'MyIngress.tunnel_ecmp'
+[11:05:11.739] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.739] [bmv2] [E] [thread 4880] Error when trying to add entry to table 'MyIngress.whether_encap'
+[11:05:11.745] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.746] [bmv2] [E] [thread 4880] Error when trying to add entry to table 'MyIngress.whether_decap_nhop'
+[11:05:11.754] [bmv2] [T] [thread 4880] bm_mc_mgrp_create
+[11:05:11.754] [bmv2] [D] [thread 4880] mgrp node created for mgid 1
+[11:05:11.758] [bmv2] [T] [thread 4880] bm_mc_node_create
+[11:05:11.758] [bmv2] [D] [thread 4880] node created for rid 0
+[11:05:11.761] [bmv2] [T] [thread 4880] bm_mc_node_associate
+[11:05:11.762] [bmv2] [D] [thread 4880] node associated with mgid 1
+[11:05:11.766] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.767] [bmv2] [D] [thread 4880] Entry 0 added to table 'MyIngress.select_mcast_grp'
+[11:05:11.768] [bmv2] [D] [thread 4880] Dumping entry 0
+Match key:
+* standard_metadata.ingress_port: EXACT     0003
+Action entry: MyIngress.set_mcast_grp - 1,
+
+[11:05:11.778] [bmv2] [T] [thread 4880] bm_mc_node_associate
+[11:05:11.779] [bmv2] [E] [thread 4880] node associate failed, invalid mgrp handle
+[11:05:11.786] [bmv2] [T] [thread 4880] bm_mc_mgrp_create
+[11:05:11.787] [bmv2] [D] [thread 4880] mgrp node created for mgid 3
+[11:05:11.791] [bmv2] [T] [thread 4880] bm_mc_node_create
+[11:05:11.792] [bmv2] [D] [thread 4880] node created for rid 449
+[11:05:11.795] [bmv2] [T] [thread 4880] bm_mc_node_associate
+[11:05:11.796] [bmv2] [D] [thread 4880] node associated with mgid 3
+[11:05:11.800] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.801] [bmv2] [D] [thread 4880] Entry 1 added to table 'MyIngress.select_mcast_grp'
+[11:05:11.801] [bmv2] [D] [thread 4880] Dumping entry 1
+Match key:
+* standard_metadata.ingress_port: EXACT     0001
+Action entry: MyIngress.set_mcast_grp - 3,
+
+[11:05:11.809] [bmv2] [T] [thread 4880] bm_mc_mgrp_create
+[11:05:11.810] [bmv2] [D] [thread 4880] mgrp node created for mgid 4
+[11:05:11.814] [bmv2] [T] [thread 4880] bm_mc_node_create
+[11:05:11.815] [bmv2] [D] [thread 4880] node created for rid 449
+[11:05:11.820] [bmv2] [T] [thread 4880] bm_mc_node_associate
+[11:05:11.823] [bmv2] [D] [thread 4880] node associated with mgid 4
+[11:05:11.824] [bmv2] [T] [thread 4880] bm_mc_mgrp_create
+[11:05:11.824] [bmv2] [D] [thread 4880] mgrp node created for mgid 5
+[11:05:11.825] [bmv2] [T] [thread 4880] bm_mc_node_create
+[11:05:11.827] [bmv2] [D] [thread 4880] node created for rid 837
+[11:05:11.828] [bmv2] [T] [thread 4880] bm_mc_node_associate
+[11:05:11.828] [bmv2] [D] [thread 4880] node associated with mgid 5
+[11:05:11.830] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.832] [bmv2] [E] [thread 4880] Error when trying to add entry to table 'MyIngress.select_mcast_grp'
+[11:05:11.835] [bmv2] [T] [thread 4880] bm_mc_mgrp_create
+[11:05:11.836] [bmv2] [D] [thread 4880] mgrp node created for mgid 6
+[11:05:11.839] [bmv2] [T] [thread 4880] bm_mc_node_create
+[11:05:11.839] [bmv2] [D] [thread 4880] node created for rid 837
+[11:05:11.840] [bmv2] [T] [thread 4880] bm_mc_node_associate
+[11:05:11.840] [bmv2] [D] [thread 4880] node associated with mgid 6
+[11:05:11.841] [bmv2] [T] [thread 4880] bm_table_add_entry
+[11:05:11.842] [bmv2] [D] [thread 4880] Entry 2 added to table 'MyIngress.select_mcast_grp'
+[11:05:11.842] [bmv2] [D] [thread 4880] Dumping entry 2
+Match key:
+* standard_metadata.ingress_port: EXACT     0002
+Action entry: MyIngress.set_mcast_grp - 6,
+
+[11:05:11.849] [bmv2] [T] [thread 4884] bm_get_config
+[11:05:11.857] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.858] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.858] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.858] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.860] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.860] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.861] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.862] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.862] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.862] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.863] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.865] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.865] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.866] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.866] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.866] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.867] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.867] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.867] [bmv2] [T] [thread 4884] bm_mt_get_entries
+[11:05:11.868] [bmv2] [T] [thread 4884] bm_mt_get_entries
