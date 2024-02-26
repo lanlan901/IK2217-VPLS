@@ -885,8 +885,8 @@ parser MyParser(packet_in packet,
     }
 
     state parse_ethernet_outer {
-        packet.extract(hdr.ethernet_outer);
-        transition select(hdr.ethernet_outer.etherType) {
+        packet.extract(hdr.ethernet);
+        transition select(hdr.ethernet.etherType) {
             TYPE_IPV4: parse_ipv4;
             TYPE_TUNNEL: parse_tunnel;
             default: accept;
@@ -940,21 +940,17 @@ const bit<16> L2_LEARN_ETHER_TYPE = 0x1234;
 const bit<16> RTT_ETHER_TYPE = 0x5678;
 
 /*************************************************************************
-
 ************   C H E C K S U M    V E R I F I C A T I O N   *************
-
 *************************************************************************/
-# 16 "p4src/your_pipeline.p4"
+
 control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
     apply { }
 }
 
 /*************************************************************************
-
 **************  I N G R E S S   P R O C E S S I N G   *******************
-
 *************************************************************************/
-# 24 "p4src/your_pipeline.p4"
+
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
@@ -1175,11 +1171,9 @@ control MyIngress(inout headers hdr,
 }
 
 /*************************************************************************
-
 ****************  E G R E S S   P R O C E S S I N G   *******************
-
 *************************************************************************/
-# 247 "p4src/your_pipeline.p4"
+
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
@@ -1229,11 +1223,9 @@ control MyEgress(inout headers hdr,
 }
 
 /*************************************************************************
-
 *************   C H E C K S U M    C O M P U T A T I O N   **************
-
 *************************************************************************/
-# 299 "p4src/your_pipeline.p4"
+
 control MyComputeChecksum(inout headers hdr, inout metadata meta) {
      apply {
  update_checksum(
@@ -1256,11 +1248,9 @@ control MyComputeChecksum(inout headers hdr, inout metadata meta) {
 }
 
 /*************************************************************************
-
 ***********************  S W I T C H  *******************************
-
 *************************************************************************/
-# 324 "p4src/your_pipeline.p4"
+
 //switch architecture
 V1Switch(
 MyParser(),
