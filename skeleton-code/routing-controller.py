@@ -159,7 +159,7 @@ class RoutingController(object):
                 pe.append(sw_name)
                 print("pe:{}".format(pe))
         pe_pairs = list(itertools.combinations(pe, 2))
-        if len(pe) == 0:
+        if len(pe) == 1:
             self.whether_single = True   
 
         for sw_pair in pe_pairs:
@@ -234,6 +234,8 @@ class RoutingController(object):
         for host in connected_hosts:
             customer_id = self.vpls_conf['hosts'][host]
             port_num = self.topo.node_to_node_port_num(sw_name, host)##交换机到主机的端口号
+            if port_num not in ports_to_customer:
+                ports_to_customer[port_num] = []
             ports_to_customer[port_num].append(customer_id)
         return ports_to_customer
 
@@ -246,11 +248,16 @@ class RoutingController(object):
         ecmp_group_id = 0
 
         if(self.whether_single):
-            pe = self.pe_list
+            print("is single")
+            pe = self.pe_list[0]
             hosts = self.topo.get_hosts_connected_to(pe)
             host_pairs = list(itertools.combinations(hosts, 2))
 
             for host_pair in host_pairs:
+                customer1_id = self.vpls_conf['hosts'][host1]
+                customer2_id = self.vpls_conf['hosts'][host2]
+                if(customer1_id != customer2_id)
+                    continue
                 host1 = host_pair[0]
                 host2 = host_pair[1]
                 host1_port = self.topo.node_to_node_port_num(pe, host1)
@@ -260,17 +267,25 @@ class RoutingController(object):
 
                 self.controllers[pe].table_add("forward_table", "forward", [str(host1_port), str(host2_mac)], [str(host2_port)])
                 self.controllers[pe].table_add("forward_table", "forward", [str(host2_port), str(host1_mac)], [str(host1_port)])
+                print("on {}: Adding to forward_table with action forward: keys = [{}, {}], values = [{}]".format(pe, host1_port, host2_mac, host2_port))
+                print("on {}: Adding to forward_table with action forward: keys = [{}, {}], values = [{}]".format(pe, host2_port, host1_mac, host1_port))
 
-            mcast_grp_id = 0;    
+
+            mcast_grp_id = 1    
             ports = self.sw_to_host_ports(pe)
 
             for host in hosts:
                 pw_id = self.get_pw_id(pe, host)
                 host_port = self.topo.node_to_node_port_num(pe, host)
                 ports_temp = ports.remove(host_port)
-                
-                self.controller.mc_mgrp_create(mcast_grp_id, ports_temp)
+                print(mcast_grp_id)
+                self.controller[pe].mc_mgrp_create(mcast_grp_id)
+                handle = self.controller[pe].mc_node_create(0, ports_temp)
+                self.controller[pe].mc_node_associate(mc_grp_id, handle)
+
                 self.controllers[pe].table_add("customer_multicast", "set_mcast_grp", [str(host_port), str(pw_id)], [str(mcast_grp_id)])
+                print("on {}: Adding to customer_multicast with action set_mcast_grp: keys = [{}, {}], values = [{}]".format(pe, host_port, pw_id, mcast_grp_id))
+
                 mcast_grp_id = mcast_grp_id + 1
 
 
@@ -296,6 +311,10 @@ class RoutingController(object):
                 for host1 in self.topo.get_hosts_connected_to(pe1):
                     for host2 in self.topo.get_hosts_connected_to(pe2):
                         print("dual host loop")
+                        customer1_id = self.vpls_conf['hosts'][host1]
+                        customer2_id = self.vpls_conf['hosts'][host2]
+                        if(customer1_id != customer2_id)
+                            continue
                         host_port1 = self.topo.node_to_node_port_num(pe1, host1)#与pe1相邻的host的端口
                         host_port2 = self.topo.node_to_node_port_num(pe2, host2)#与pe2相邻的host的端口
                         host1_mac = self.topo.get_host_mac(host1)
@@ -373,6 +392,10 @@ class RoutingController(object):
                 
                 for host1 in self.topo.get_hosts_connected_to(pe1):
                         for host2 in self.topo.get_hosts_connected_to(pe2):
+                            customer1_id = self.vpls_conf['hosts'][host1]
+                            customer2_id = self.vpls_conf['hosts'][host2]
+                            if(customer1_id != customer2_id)
+                                continue
                             host_port1 = self.topo.node_to_node_port_num(pe1, host1)#与pe1相邻的host的端口
                             host_port2 = self.topo.node_to_node_port_num(pe2, host2)#与pe2相邻的host的端口
                             host1_mac = self.topo.get_host_mac(host1)
