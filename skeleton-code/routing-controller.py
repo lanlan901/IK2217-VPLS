@@ -258,33 +258,33 @@ class RoutingController(object):
                 print("on {}: Adding to forward_table with action forward: keys = [{}, {}], values = [{}]".format(pe, host1_port, host2_mac, host2_port))
                 print("on {}: Adding to forward_table with action forward: keys = [{}, {}], values = [{}]".format(pe, host2_port, host1_mac, host1_port))
 
-            mcast_grp_id = 1    
+            # mcast_grp_id = 1    
             
-            ports = self.sw_to_host_ports(pe)
-            print(ports)
-            for host in hosts:
-                host_temp = hosts[:]
-                host_temp.remove(host)
-                ports_temp = []
-                host_port = self.topo.node_to_node_port_num(pe, host)
-                for host2 in host_temp:
-                    customer1_id = self.vpls_conf['hosts'][host]
-                    customer2_id = self.vpls_conf['hosts'][host2]
-                    if(customer1_id != customer2_id):
-                        continue
-                    host2_port = self.topo.node_to_node_port_num(pe, host2)
-                    ports_temp.append(host2_port)
+            # ports = self.sw_to_host_ports(pe)
+            # print(ports)
+            # for host in hosts:
+            #     host_temp = hosts[:]
+            #     host_temp.remove(host)
+            #     ports_temp = []
+            #     host_port = self.topo.node_to_node_port_num(pe, host)
+            #     for host2 in host_temp:
+            #         customer1_id = self.vpls_conf['hosts'][host]
+            #         customer2_id = self.vpls_conf['hosts'][host2]
+            #         if(customer1_id != customer2_id):
+            #             continue
+            #         host2_port = self.topo.node_to_node_port_num(pe, host2)
+            #         ports_temp.append(host2_port)
                 
                 
-                print(ports_temp)
-                self.controllers[pe].mc_mgrp_create(mcast_grp_id)
-                handle = self.controllers[pe].mc_node_create(0, ports_temp)
-                self.controllers[pe].mc_node_associate(mcast_grp_id, handle)
+            #     print(ports_temp)
+            #     self.controllers[pe].mc_mgrp_create(mcast_grp_id)
+            #     handle = self.controllers[pe].mc_node_create(0, ports_temp)
+            #     self.controllers[pe].mc_node_associate(mcast_grp_id, handle)
 
-                self.controllers[pe].table_add("select_mcast_grp", "set_mcast_grp", [str(host_port)], [str(mcast_grp_id)])
-                print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, host_port, mcast_grp_id))
+            #     self.controllers[pe].table_add("select_mcast_grp", "set_mcast_grp", [str(host_port)], [str(mcast_grp_id)])
+            #     print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, host_port, mcast_grp_id))
 
-                mcast_grp_id = mcast_grp_id + 1
+            #     mcast_grp_id = mcast_grp_id + 1
 
 
         for pe_pair in self.pe_pairs:
