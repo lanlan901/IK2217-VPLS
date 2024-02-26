@@ -285,12 +285,8 @@ control MyEgress(inout headers hdr,
                 hdr.cpu.ingress_port = (bit<16>)meta.ingress_port;
             truncate((bit<32>)22);
             }
-<<<<<<< HEAD
-        } else if (standard_metadata.egress_rid != 0) { 
-=======
         } //rid不等于0，是要发到隧道里的封装包
         else if (standard_metadata.egress_rid != 0) { 
->>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
             whether_encap_egress.apply();
         }
     }

@@ -1067,10 +1067,10 @@ control MyIngress(inout headers hdr,
         }
         actions = {
             set_mcast_grp;
-            drop;
+            NoAction;
         }
         size = 1024;
-        default_action = drop;
+        default_action = NoAction;
     }
 
 
@@ -1221,7 +1221,8 @@ control MyEgress(inout headers hdr,
                 hdr.cpu.ingress_port = (bit<16>)meta.ingress_port;
             truncate((bit<32>)22);
             }
-        } else if (standard_metadata.egress_rid != 0) {
+        } //rid不等于0，是要发到隧道里的封装包
+        else if (standard_metadata.egress_rid != 0) {
             whether_encap_egress.apply();
         }
     }
@@ -1232,7 +1233,7 @@ control MyEgress(inout headers hdr,
 *************   C H E C K S U M    C O M P U T A T I O N   **************
 
 *************************************************************************/
-# 298 "p4src/your_pipeline.p4"
+# 299 "p4src/your_pipeline.p4"
 control MyComputeChecksum(inout headers hdr, inout metadata meta) {
      apply {
  update_checksum(
@@ -1259,7 +1260,7 @@ control MyComputeChecksum(inout headers hdr, inout metadata meta) {
 ***********************  S W I T C H  *******************************
 
 *************************************************************************/
-# 323 "p4src/your_pipeline.p4"
+# 324 "p4src/your_pipeline.p4"
 //switch architecture
 V1Switch(
 MyParser(),

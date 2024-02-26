@@ -415,7 +415,7 @@
       "id" : 1,
       "source_info" : {
         "filename" : "p4src/your_pipeline.p4",
-        "line" : 300,
+        "line" : 301,
         "column" : 1,
         "source_fragment" : "update_checksum( ..."
       },
@@ -505,26 +505,10 @@
       "primitives" : []
     },
     {
-      "name" : "MyIngress.drop",
+      "name" : "NoAction",
       "id" : 5,
       "runtime_data" : [],
-      "primitives" : [
-        {
-          "op" : "mark_to_drop",
-          "parameters" : [
-            {
-              "type" : "header",
-              "value" : "standard_metadata"
-            }
-          ],
-          "source_info" : {
-            "filename" : "p4src/your_pipeline.p4",
-            "line" : 28,
-            "column" : 8,
-            "source_fragment" : "mark_to_drop(standard_metadata)"
-          }
-        }
-      ]
+      "primitives" : []
     },
     {
       "name" : "MyIngress.drop",
@@ -1151,13 +1135,8 @@
       ]
     },
     {
-<<<<<<< HEAD
       "name" : "your_pipeline279",
-      "id" : 26,
-=======
-      "name" : "your_pipeline280",
       "id" : 19,
->>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
       "runtime_data" : [],
       "primitives" : [
         {
@@ -1220,13 +1199,8 @@
       ]
     },
     {
-<<<<<<< HEAD
       "name" : "your_pipeline283",
-      "id" : 27,
-=======
-      "name" : "your_pipeline284",
       "id" : 20,
->>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
       "runtime_data" : [],
       "primitives" : [
         {
@@ -1317,13 +1291,8 @@
       ]
     },
     {
-<<<<<<< HEAD
       "name" : "your_pipeline275",
-      "id" : 28,
-=======
-      "name" : "your_pipeline276",
       "id" : 21,
->>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
       "runtime_data" : [],
       "primitives" : [
         {
@@ -1417,7 +1386,7 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [13, 2],
+          "action_ids" : [13, 3],
           "actions" : ["MyIngress.mac_learn", "NoAction"],
           "base_default_next" : "MyIngress.whether_encap",
           "next_tables" : {
@@ -1466,7 +1435,7 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [14, 3],
+          "action_ids" : [14, 4],
           "actions" : ["MyIngress.encap", "NoAction"],
           "base_default_next" : "node_4",
           "next_tables" : {
@@ -1474,7 +1443,7 @@
             "NoAction" : "node_4"
           },
           "default_entry" : {
-            "action_id" : 3,
+            "action_id" : 4,
             "action_const" : false,
             "action_data" : [],
             "action_entry_const" : false
@@ -1509,7 +1478,7 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [11, 4],
+          "action_ids" : [11, 5],
           "actions" : ["MyIngress.decap_nhop", "NoAction"],
           "base_default_next" : "MyIngress.tunnel_ecmp",
           "next_tables" : {
@@ -1517,7 +1486,7 @@
             "NoAction" : "MyIngress.tunnel_ecmp"
           },
           "default_entry" : {
-            "action_id" : 4,
+            "action_id" : 5,
             "action_const" : false,
             "action_data" : [],
             "action_entry_const" : false
@@ -1552,7 +1521,7 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [10, 8, 5],
+          "action_ids" : [10, 8, 6],
           "actions" : ["MyIngress.set_nhop", "MyIngress.ecmp_group", "MyIngress.drop"],
           "base_default_next" : null,
           "next_tables" : {
@@ -1561,7 +1530,7 @@
             "MyIngress.drop" : null
           },
           "default_entry" : {
-            "action_id" : 5,
+            "action_id" : 6,
             "action_const" : false,
             "action_data" : [],
             "action_entry_const" : false
@@ -1722,15 +1691,15 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [12, 6],
-          "actions" : ["MyIngress.set_mcast_grp", "MyIngress.drop"],
+          "action_ids" : [12, 2],
+          "actions" : ["MyIngress.set_mcast_grp", "NoAction"],
           "base_default_next" : null,
           "next_tables" : {
             "MyIngress.set_mcast_grp" : null,
-            "MyIngress.drop" : null
+            "NoAction" : null
           },
           "default_entry" : {
-            "action_id" : 6,
+            "action_id" : 2,
             "action_const" : false,
             "action_data" : [],
             "action_entry_const" : false
@@ -1772,49 +1741,6 @@
               "left" : null,
               "right" : {
                 "type" : "field",
-<<<<<<< HEAD
-                "value" : ["scalars", "tmp_0"]
-              }
-            }
-          },
-          "true_next" : null,
-          "false_next" : "node_12"
-        },
-        {
-          "name" : "node_12",
-          "id" : 2,
-          "source_info" : {
-            "filename" : "p4src/your_pipeline.p4",
-            "line" : 232,
-            "column" : 21,
-            "source_fragment" : "hdr.ipv4.isValid()"
-          },
-          "expression" : {
-            "type" : "expression",
-            "value" : {
-              "op" : "d2b",
-              "left" : null,
-              "right" : {
-                "type" : "field",
-                "value" : ["ipv4", "$valid$"]
-              }
-            }
-          },
-          "true_next" : "MyIngress.ipv4_lpm",
-          "false_next" : "MyIngress.tunnel_forward_table"
-        },
-        {
-          "name" : "node_18",
-          "id" : 3,
-          "expression" : {
-            "type" : "expression",
-            "value" : {
-              "op" : "d2b",
-              "left" : null,
-              "right" : {
-                "type" : "field",
-=======
->>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
                 "value" : ["scalars", "tmp"]
               }
             }
@@ -1836,13 +1762,8 @@
       "init_table" : "node_15",
       "tables" : [
         {
-<<<<<<< HEAD
           "name" : "tbl_your_pipeline275",
-          "id" : 13,
-=======
-          "name" : "tbl_your_pipeline276",
           "id" : 9,
->>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
           "source_info" : {
             "filename" : "p4src/your_pipeline.p4",
             "line" : 275,
@@ -1856,19 +1777,11 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-<<<<<<< HEAD
-          "action_ids" : [28],
-          "actions" : ["your_pipeline275"],
-          "base_default_next" : "node_24",
-          "next_tables" : {
-            "your_pipeline275" : "node_24"
-=======
           "action_ids" : [21],
-          "actions" : ["your_pipeline276"],
+          "actions" : ["your_pipeline275"],
           "base_default_next" : "node_17",
           "next_tables" : {
-            "your_pipeline276" : "node_17"
->>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
+            "your_pipeline275" : "node_17"
           },
           "default_entry" : {
             "action_id" : 21,
@@ -1878,13 +1791,8 @@
           }
         },
         {
-<<<<<<< HEAD
           "name" : "tbl_your_pipeline279",
-          "id" : 14,
-=======
-          "name" : "tbl_your_pipeline280",
           "id" : 10,
->>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
           "source_info" : {
             "filename" : "p4src/your_pipeline.p4",
             "line" : 279,
@@ -1898,13 +1806,8 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-<<<<<<< HEAD
-          "action_ids" : [26],
-          "actions" : ["your_pipeline279"],
-=======
           "action_ids" : [19],
-          "actions" : ["your_pipeline280"],
->>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
+          "actions" : ["your_pipeline279"],
           "base_default_next" : null,
           "next_tables" : {
             "your_pipeline279" : null
@@ -1917,13 +1820,8 @@
           }
         },
         {
-<<<<<<< HEAD
           "name" : "tbl_your_pipeline283",
-          "id" : 15,
-=======
-          "name" : "tbl_your_pipeline284",
           "id" : 11,
->>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
           "source_info" : {
             "filename" : "p4src/your_pipeline.p4",
             "line" : 283,
@@ -1937,13 +1835,8 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-<<<<<<< HEAD
-          "action_ids" : [27],
-          "actions" : ["your_pipeline283"],
-=======
           "action_ids" : [20],
-          "actions" : ["your_pipeline284"],
->>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
+          "actions" : ["your_pipeline283"],
           "base_default_next" : null,
           "next_tables" : {
             "your_pipeline283" : null
@@ -2018,13 +1911,8 @@
               }
             }
           },
-<<<<<<< HEAD
           "true_next" : "tbl_your_pipeline275",
-          "false_next" : "node_27"
-=======
-          "true_next" : "tbl_your_pipeline276",
           "false_next" : "node_20"
->>>>>>> 2f46283446628d9d862eb2b9032fe3e1627b7927
         },
         {
           "name" : "node_17",
@@ -2054,8 +1942,8 @@
           "id" : 4,
           "source_info" : {
             "filename" : "p4src/your_pipeline.p4",
-            "line" : 288,
-            "column" : 19,
+            "line" : 289,
+            "column" : 17,
             "source_fragment" : "standard_metadata.egress_rid != 0"
           },
           "expression" : {
@@ -2084,7 +1972,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "p4src/your_pipeline.p4",
-        "line" : 300,
+        "line" : 301,
         "column" : 1,
         "source_fragment" : "update_checksum( ..."
       },

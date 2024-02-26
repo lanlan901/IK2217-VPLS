@@ -257,6 +257,7 @@ class RoutingController(object):
                 host2 = host_pair[1]
                 customer1_id = self.vpls_conf['hosts'][host1]
                 customer2_id = self.vpls_conf['hosts'][host2]
+
                 if(customer1_id != customer2_id):
                     continue
                 host1_port = self.topo.node_to_node_port_num(pe, host1)
