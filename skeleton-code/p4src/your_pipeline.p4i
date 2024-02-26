@@ -940,17 +940,21 @@ const bit<16> L2_LEARN_ETHER_TYPE = 0x1234;
 const bit<16> RTT_ETHER_TYPE = 0x5678;
 
 /*************************************************************************
-************   C H E C K S U M    V E R I F I C A T I O N   *************
-*************************************************************************/
 
+************   C H E C K S U M    V E R I F I C A T I O N   *************
+
+*************************************************************************/
+# 16 "p4src/your_pipeline.p4"
 control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
     apply { }
 }
 
 /*************************************************************************
-**************  I N G R E S S   P R O C E S S I N G   *******************
-*************************************************************************/
 
+**************  I N G R E S S   P R O C E S S I N G   *******************
+
+*************************************************************************/
+# 24 "p4src/your_pipeline.p4"
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
@@ -1171,61 +1175,65 @@ control MyIngress(inout headers hdr,
 }
 
 /*************************************************************************
-****************  E G R E S S   P R O C E S S I N G   *******************
-*************************************************************************/
 
+****************  E G R E S S   P R O C E S S I N G   *******************
+
+*************************************************************************/
+# 247 "p4src/your_pipeline.p4"
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
 
-    action drop_2(){
-        mark_to_drop();
-    }
+    // action drop_2(){
+    //     mark_to_drop();
+    // }
 
-    action encap_egress(tunnel_id_t tunnel_id, pw_id_t pw_id) {
-        hdr.ethernet_outer.setValid();
-        hdr.tunnel.setValid();
-        hdr.ethernet.etherType = TYPE_TUNNEL;
-        hdr.tunnel.tunnel_id = tunnel_id;
-        hdr.tunnel.pw_id = pw_id;
-    }
+    // action encap_egress(tunnel_id_t tunnel_id, pw_id_t pw_id) {
+    //     hdr.ethernet_outer.setValid();
+    //     hdr.tunnel.setValid();
+    //     hdr.ethernet.etherType = TYPE_TUNNEL;
+    //     hdr.tunnel.tunnel_id = tunnel_id;
+    //     hdr.tunnel.pw_id = pw_id;
+    // }
 
-    table whether_encap_egress{
-        key = { standard_metadata.egress_port: exact; }
-        actions = {
-            encap_egress;
-            NoAction;
-        }
-        size = 1024;
-        default_action = NoAction;
-    }
+    // table whether_encap_egress{
+    //     key = { standard_metadata.egress_port: exact; }
+    //     actions = {
+    //         encap_egress;
+    //         NoAction;
+    //     }
+    //     size = 1024;
+    //     default_action = NoAction;
+    // }
 
     apply {
-        if (standard_metadata.instance_type == 1){
-            hdr.cpu.setValid();
-            hdr.cpu.srcAddr = hdr.ethernet.srcAddr;
-            hdr.ethernet.etherType = L2_LEARN_ETHER_TYPE;
-            if (hdr.tunnel.isValid()) {
-                hdr.cpu.tunnel_id = hdr.tunnel.tunnel_id;
-                hdr.cpu.pw_id = hdr.tunnel.pw_id;
-                hdr.cpu.ingress_port = 0;
-            } else {
-                hdr.cpu.tunnel_id = 0;
-                hdr.cpu.pw_id = 0;
-                hdr.cpu.ingress_port = (bit<16>)meta.ingress_port;
-            truncate((bit<32>)22);
-            }
-        } //rid不等于0，是要发到隧道里的封装包
-        else if (standard_metadata.egress_rid != 0) {
-            whether_encap_egress.apply();
-        }
-    }
+        // if (standard_metadata.instance_type == 1){
+        //     hdr.cpu.setValid();
+        //     hdr.cpu.srcAddr = hdr.ethernet.srcAddr;
+        //     hdr.ethernet.etherType = L2_LEARN_ETHER_TYPE;
+        //     if (hdr.tunnel.isValid()) {
+        //         hdr.cpu.tunnel_id = hdr.tunnel.tunnel_id;
+        //         hdr.cpu.pw_id = hdr.tunnel.pw_id;
+        //         hdr.cpu.ingress_port = 0;
+        //     } else {
+        //         hdr.cpu.tunnel_id = 0;
+        //         hdr.cpu.pw_id = 0;
+        //         hdr.cpu.ingress_port = (bit<16>)meta.ingress_port;
+        //     truncate((bit<32>)22);
+        //     }
+        // } //rid不等于0，是要发到隧道里的封装包
+        // else if (standard_metadata.egress_rid != 0) { 
+        //     whether_encap_egress.apply();
+        // }
+     }
 }
 
 /*************************************************************************
-*************   C H E C K S U M    C O M P U T A T I O N   **************
-*************************************************************************/
 
+*************   C H E C K S U M    C O M P U T A T I O N   **************
+
+*************************************************************************/
+# 299 "p4src/your_pipeline.p4"
 control MyComputeChecksum(inout headers hdr, inout metadata meta) {
      apply {
  update_checksum(
@@ -1248,9 +1256,11 @@ control MyComputeChecksum(inout headers hdr, inout metadata meta) {
 }
 
 /*************************************************************************
-***********************  S W I T C H  *******************************
-*************************************************************************/
 
+***********************  S W I T C H  *******************************
+
+*************************************************************************/
+# 324 "p4src/your_pipeline.p4"
 //switch architecture
 V1Switch(
 MyParser(),
