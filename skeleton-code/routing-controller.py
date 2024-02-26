@@ -183,7 +183,7 @@ class RoutingController(object):
         for host in connected_hosts: 
             port_num = self.topo.node_to_node_port_num(sw_name, host)
             customer_label = self.vpls_conf['hosts'][host]
-            pw_id = hash(customer_label) %1024 + port_num
+            pw_id = hash(customer_label + sw_name) %1024 + port_num
             pw_id_dic[host] = pw_id
         return pw_id_dic
     
