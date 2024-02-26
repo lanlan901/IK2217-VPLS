@@ -133,10 +133,10 @@ control MyIngress(inout headers hdr,
         }
         actions = {
             set_mcast_grp;
-            drop;
+            NoAction;
         }
         size = 1024;
-        default_action = drop;
+        default_action = NoAction;
     }
 
 
