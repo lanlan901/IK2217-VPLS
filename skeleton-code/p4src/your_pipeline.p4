@@ -134,10 +134,10 @@ control MyIngress(inout headers hdr,
         }
         actions = {
             set_mcast_grp;
-            NoAction;
+            drop;
         }
         size = 1024;
-        default_action = NoAction;
+        default_action = drop;
     }
 
 
@@ -230,12 +230,12 @@ control MyIngress(inout headers hdr,
         }
         else {
             if (forward_table.apply().hit) { }
-            else if (hdr.ipv4.isValid()) {
-                switch (ipv4_lpm.apply().action_run){
-                    ecmp_group: { ecmp_group_to_nhop.apply(); }
-                }
-            }
-            else if (tunnel_forward_table.apply().hit) { }
+            // else if (hdr.ipv4.isValid()) {
+            //     switch (ipv4_lpm.apply().action_run){
+            //         ecmp_group: { ecmp_group_to_nhop.apply(); }
+            //     }
+            // }
+            // else if (tunnel_forward_table.apply().hit) { }
             else select_mcast_grp.apply();
         }
     }
@@ -286,9 +286,9 @@ control MyEgress(inout headers hdr,
                 hdr.cpu.ingress_port = (bit<16>)meta.ingress_port;
             truncate((bit<32>)22);
             }
-        } ##rid不等于0，是要发到隧道里的封装包
+        } //rid不等于0，是要发到隧道里的封装包
         else if (standard_metadata.egress_rid != 0) { 
-            whether_encap_egress_egress.apply();
+            whether_encap_egress.apply();
         }
     }
 }

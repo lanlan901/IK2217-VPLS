@@ -254,12 +254,12 @@ class RoutingController(object):
             host_pairs = list(itertools.combinations(hosts, 2))
 
             for host_pair in host_pairs:
-                customer1_id = self.vpls_conf['hosts'][host1]
-                customer2_id = self.vpls_conf['hosts'][host2]
-                if(customer1_id != customer2_id)
-                    continue
                 host1 = host_pair[0]
                 host2 = host_pair[1]
+                customer1_id = self.vpls_conf['hosts'][host1]
+                customer2_id = self.vpls_conf['hosts'][host2]
+                if(customer1_id != customer2_id):
+                    continue
                 host1_port = self.topo.node_to_node_port_num(pe, host1)
                 host1_mac = self.topo.get_host_mac(host1)
                 host2_port = self.topo.node_to_node_port_num(pe, host2)
@@ -273,15 +273,17 @@ class RoutingController(object):
 
             mcast_grp_id = 1    
             ports = self.sw_to_host_ports(pe)
-
+            print(ports)
             for host in hosts:
                 pw_id = self.get_pw_id(pe, host)
                 host_port = self.topo.node_to_node_port_num(pe, host)
-                ports_temp = ports.remove(host_port)
-                print(mcast_grp_id)
-                self.controller[pe].mc_mgrp_create(mcast_grp_id)
-                handle = self.controller[pe].mc_node_create(0, ports_temp)
-                self.controller[pe].mc_node_associate(mc_grp_id, handle)
+                ports_temp = ports[:]
+                ports_temp.remove(host_port)
+                print(ports)
+                print(ports_temp)
+                self.controllers[pe].mc_mgrp_create(mcast_grp_id)
+                handle = self.controllers[pe].mc_node_create(0, ports_temp)
+                self.controllers[pe].mc_node_associate(mcast_grp_id, handle)
 
                 self.controllers[pe].table_add("customer_multicast", "set_mcast_grp", [str(host_port), str(pw_id)], [str(mcast_grp_id)])
                 print("on {}: Adding to customer_multicast with action set_mcast_grp: keys = [{}, {}], values = [{}]".format(pe, host_port, pw_id, mcast_grp_id))
@@ -313,7 +315,7 @@ class RoutingController(object):
                         print("dual host loop")
                         customer1_id = self.vpls_conf['hosts'][host1]
                         customer2_id = self.vpls_conf['hosts'][host2]
-                        if(customer1_id != customer2_id)
+                        if(customer1_id != customer2_id):
                             continue
                         host_port1 = self.topo.node_to_node_port_num(pe1, host1)#与pe1相邻的host的端口
                         host_port2 = self.topo.node_to_node_port_num(pe2, host2)#与pe2相邻的host的端口
@@ -394,7 +396,7 @@ class RoutingController(object):
                         for host2 in self.topo.get_hosts_connected_to(pe2):
                             customer1_id = self.vpls_conf['hosts'][host1]
                             customer2_id = self.vpls_conf['hosts'][host2]
-                            if(customer1_id != customer2_id)
+                            if(customer1_id != customer2_id):
                                 continue
                             host_port1 = self.topo.node_to_node_port_num(pe1, host1)#与pe1相邻的host的端口
                             host_port2 = self.topo.node_to_node_port_num(pe2, host2)#与pe2相邻的host的端口
