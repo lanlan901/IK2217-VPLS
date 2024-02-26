@@ -130,7 +130,6 @@ control MyIngress(inout headers hdr,
     table select_mcast_grp {
         key = {
             standard_metadata.ingress_port : exact;
-            hdr.tunnel.pw_id: exact;
         }
         actions = {
             set_mcast_grp;
@@ -286,9 +285,8 @@ control MyEgress(inout headers hdr,
                 hdr.cpu.ingress_port = (bit<16>)meta.ingress_port;
             truncate((bit<32>)22);
             }
-        } ##rid不等于0，是要发到隧道里的封装包
-        else if (standard_metadata.egress_rid != 0) { 
-            whether_encap_egress_egress.apply();
+        } else if (standard_metadata.egress_rid != 0) { 
+            whether_encap_egress.apply();
         }
     }
 }
