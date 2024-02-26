@@ -1,6 +1,9 @@
 cd skeleton-code
 sudo p4run --config 01-methane-p4app.json
+sudo p4run --config 02-ethylene-p4app.json
 sudo python routing-controller.py 01-methane-vpls.conf
+
+sudo python routing-controller.py 02-ethylene-vpls.conf
 sudo bash skeleton-code/test_topology_01.sh
 
 ssh p4@192.168.56.101
