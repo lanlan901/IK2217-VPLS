@@ -230,7 +230,7 @@
               "parameters" : [
                 {
                   "type" : "regular",
-                  "value" : "ethernet_outer"
+                  "value" : "ethernet"
                 }
               ],
               "op" : "extract"
@@ -244,12 +244,6 @@
               "next_state" : "parse_ipv4"
             },
             {
-              "type" : "hexstr",
-              "value" : "0x2345",
-              "mask" : null,
-              "next_state" : "parse_tunnel"
-            },
-            {
               "value" : "default",
               "mask" : null,
               "next_state" : null
@@ -258,7 +252,7 @@
           "transition_key" : [
             {
               "type" : "field",
-              "value" : ["ethernet_outer", "etherType"]
+              "value" : ["ethernet", "etherType"]
             }
           ]
         },
@@ -318,49 +312,6 @@
             }
           ],
           "transition_key" : []
-        },
-        {
-          "name" : "parse_tunnel",
-          "id" : 3,
-          "parser_ops" : [
-            {
-              "parameters" : [
-                {
-                  "type" : "regular",
-                  "value" : "tunnel"
-                }
-              ],
-              "op" : "extract"
-            },
-            {
-              "parameters" : [
-                {
-                  "type" : "regular",
-                  "value" : "ethernet"
-                }
-              ],
-              "op" : "extract"
-            }
-          ],
-          "transitions" : [
-            {
-              "type" : "hexstr",
-              "value" : "0x0800",
-              "mask" : null,
-              "next_state" : "parse_ipv4"
-            },
-            {
-              "value" : "default",
-              "mask" : null,
-              "next_state" : null
-            }
-          ],
-          "transition_key" : [
-            {
-              "type" : "field",
-              "value" : ["ethernet", "etherType"]
-            }
-          ]
         }
       ]
     }

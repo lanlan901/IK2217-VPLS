@@ -7,12 +7,12 @@ parser MyParser(packet_in packet,
                 inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
     state start {
-        transition parse_ethernet_outer;
+        transition parse_ethernet;
     }
 
     state parse_ethernet_outer {
-        packet.extract(hdr.ethernet_outer);
-        transition select(hdr.ethernet_outer.etherType) {
+        packet.extract(hdr.ethernet);
+        transition select(hdr.ethernet.etherType) {
             TYPE_IPV4: parse_ipv4;
             TYPE_TUNNEL: parse_tunnel;
             default: accept;
