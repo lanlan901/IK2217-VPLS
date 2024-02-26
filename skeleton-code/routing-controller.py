@@ -73,7 +73,6 @@ class EventBasedController(threading.Thread):
                     ##如果不是进来的端口且客户标签一致则转发到对应主机
                     if port != ingress_port and self.interface.mac_to_customer(self.sw_name)[macAddr] == self.interface.ports_to_customer_mapping(self.sw_name)[port]:
                         self.controller.table_add('forward_table', 'forward', [str(ingress_port), str(macAddr)], [str(egress_spec)])
-                        self.controller.table_add('tunnel_forward_table', 'forward', [str(ingress_port), str(tunnel_id), str(pw_id) ], [str(egress_spec)])
                     ##否则尝试封装并发到隧道
                     else:
                         self.controller.table_add('whether_encap_egress', 'encap_egress', [str(egress_spec)], [str(tunnel_id), str(pw_id)])
@@ -233,12 +232,8 @@ class RoutingController(object):
         for host in connected_hosts:
             customer_id = self.vpls_conf['hosts'][host]
             port_num = self.topo.node_to_node_port_num(sw_name, host)##交换机到主机的端口号
-            if port_num not in ports_to_customer:
-                ports_to_customer[port_num] = []
-            ports_to_customer[port_num].append(customer_id)
+            ports_to_customer[port_num] = customer_id
         return ports_to_customer
-
-    
 
     def process_network(self):
 
@@ -450,8 +445,8 @@ class RoutingController(object):
                 if customer_id == 'B':
                     B_port_list.append(port_num)
 
-            print("for pe:{} A_host_list:{}".format(pe, A_port_list))
-            print("for pe:{} B_host_list:{}".format(pe, B_port_list))
+            print("for pe:{} A_port_list:{}".format(pe, A_port_list))
+            print("for pe:{} B_list_list:{}".format(pe, B_port_list))
             if A_port_list: 
                 self.controllers[pe].mc_mgrp_create(mc_grp_id_A)
                 handle_A = self.controllers[pe].mc_node_create(0, A_port_list) ##rid = 0, 不用复制直接转发
@@ -470,35 +465,26 @@ class RoutingController(object):
             #来自主机的包
             for ingress_port in host_port_list:
                 customer_id = self.ports_to_customer_mapping(pe)[ingress_port]
+                print("for port{}, customer id is{}".format(ingress_port, customer_id))
                 if customer_id == 'A':
                     self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port)], [str(mc_grp_id_A)])
+                    print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, ingress_port, mc_grp_id_A))
                 if customer_id == 'B':
                     self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port)], [str(mc_grp_id_B)])
-            
-            for ingress_port in tunnel_port_list:
-                self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port)], [str(mc_grp_id_tunnel)])
+                    print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, ingress_port, mc_grp_id_B))
+            self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port)], [str(mc_grp_id_tunnel)])
+            print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, ingress_port, mc_grp_id_tunnel))
 
         for non_pe in self.non_pe_list:
-
-            tunnel_list_non_pe = []
-            tunnel_id_list_non_pe = [] 
-
-            for pe_pair in self.pe_pairs:
-                tunnel_id = self.pe_pairs.index(pe_pair)
-                paths =  self.tunnel_path_list[tunnel_id]
-                for path in paths:
-                    if non_pe in path:
-                        tunnel_list_non_pe.append(tunnel)
-                        tunnel_id_list_non_pe.append(tunnel_id)
-
-            for index in range(len(tunnel_list_non_pe)):
-                tunnel = tunnel_list_non_pe[index]
-                tunnel_id = tunnel_id_list_non_pe[index]
-                ports = self.get_tunnel_ports(tunnel, non_pe)
-                ##forward
-                self.controllers[non_pe].table_add('tunnel_forward_table', 'forward', [str(ports[0]), str(tunnel_id)], [str(ports[1])])
-                self.controllers[non_pe].table_add('tunnel_forward_table', 'forward', [str(ports[1]), str(tunnel_id)], [str(ports[0])])
-
+            non_pe_mcid = 4
+            rid = 1
+            port_list = self.sw_to_tunnel_ports(non_pe)
+            self.controllers[non_pe].mc_mgrp_create(non_pe_mcid)
+            handle = self.controllers[non_pe].mc_node_create(rid, port_list)
+            self.controllers[non_pe].mc_node_associate(non_pe_mcid, handle)
+            for ingress_port in port_list:
+                self.controllers[non_pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port)], [str(non_pe_mcid)])
+                print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(non_pe, ingress_port, non_pe_mcid))
 
         ### logic to be executed at the start-up of the topology
         ### hint: compute ECMP paths here
