@@ -1459,7 +1459,7 @@
       ["standard_metadata", "priority"]
     ]
   ],
-  "program" : "/media/shared/skeleton-code/p4src/your_pipeline.p4i",
+  "program" : "/media/shared/VPLS/skeleton-code/p4src/your_pipeline.p4i",
   "__meta__" : {
     "version" : [2, 18],
     "compiler" : "https://github.com/p4lang/p4c"
