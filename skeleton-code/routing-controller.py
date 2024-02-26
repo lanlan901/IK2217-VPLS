@@ -483,6 +483,10 @@ class RoutingController(object):
                     print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
                     mc_grp_id += 1
                 
+            for port_num in tunnel_port_list:
+                
+                
+                    
                 self.controllers[pe].mc_mgrp_create(mc_grp_id)
                 handle = self.controllers[pe].mc_node_create(1, tunnel_port_list)
                 self.controllers[pe].mc_node_associate(mc_grp_id, handle)
