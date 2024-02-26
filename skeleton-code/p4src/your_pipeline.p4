@@ -130,14 +130,13 @@ control MyIngress(inout headers hdr,
     table select_mcast_grp {
         key = {
             standard_metadata.ingress_port : exact;
-            hdr.tunnel.pw_id: exact;
         }
         actions = {
             set_mcast_grp;
-            drop;
+            NoAction;
         }
         size = 1024;
-        default_action = drop;
+        default_action = NoAction;
     }
 
 
