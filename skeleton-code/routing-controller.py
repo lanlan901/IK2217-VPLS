@@ -243,7 +243,7 @@ class RoutingController(object):
         self.get_pe_list()
         ecmp_group_id = 0
         mc_grp_id = 1
-        rid = 1
+        
 
         if(self.whether_single):
             print("is single")
@@ -459,17 +459,17 @@ class RoutingController(object):
             print("for pe:{} A_port_list:{}".format(pe, A_port_list))
             print("for pe:{} B_list_list:{}".format(pe, B_port_list))
 
-            if B_port_list:
-                self.controllers[pe].mc_mgrp_create(mc_grp_id_B)
-                handle_B = self.controllers[pe].mc_node_create(0, B_port_list)
-                self.controllers[pe].mc_node_associate(mc_grp_id_B, handle_B)
+            # if B_port_list:
+            #     self.controllers[pe].mc_mgrp_create(mc_grp_id_B)
+            #     handle_B = self.controllers[pe].mc_node_create(0, B_port_list)
+            #     self.controllers[pe].mc_node_associate(mc_grp_id_B, handle_B)
 
-            if tunnel_port_list:
-                self.controllers[pe].mc_mgrp_create(mc_grp_id_tunnel)
-                handle_tunnel = self.controllers[pe].mc_node_create(1, tunnel_port_list) ##rid = 1
-                self.controllers[pe].mc_node_associate(mc_grp_id_tunnel, handle_tunnel)
+            # if tunnel_port_list:
+            #     self.controllers[pe].mc_mgrp_create(mc_grp_id_tunnel)
+            #     handle_tunnel = self.controllers[pe].mc_node_create(1, tunnel_port_list) ##rid = 1
+            #     self.controllers[pe].mc_node_associate(mc_grp_id_tunnel, handle_tunnel)
 
-
+            rid = 1
             for host in self.topo.get_hosts_connected_to(pe): 
                 customer_id = self.vpls_conf['hosts'][host]
                 port_num = self.topo.node_to_node_port_num(pe, host)
@@ -494,30 +494,56 @@ class RoutingController(object):
                     mc_grp_id += 1
                 
                 
-
+                all_host_list = self.get_host_list()
+                pe_host_list = self.topo.get_hosts_connected_to(pe)
+                expe_host_list = [item for item in all_host_list if item not in pe_host_list]
+                tunnel_ids = []
+                pw_ids = []
+                for host1 in expe_host_list:#遍历其他主机  获取tunnelid  pwid
+                    if self.vpls_conf['hosts'][host] == self.vpls_conf['hosts'][host1]:#如果其他主机的id一致
                 
-                for host in 
+                        for pe_pair in self.pe_pairs:#找tunnel id
+                            if(pe_pair[0] == pe):
+                                if host1 in self.topo.get_hosts_connected_to(pe_pair[1]):
+                                    tunnel_ids.append(self.pe_pairs.index(pe_pair))
+                                    pw_ids.append(self.get_pw_id(pe_pair[1], host1))
+                                    
+                            elif(pe_pair[1] == pe):
+                                if host1 in self.topo.get_hosts_connected_to(pe_pair[0]):
+                                    tunnel_ids.append(self.pe_pairs.index(pe_pair))
+                                    pw_ids.append(self.get_pw_id(pe_pair[0], host1))
                 
                 
                 
+                
+                for index in range(len(tunnel_ids)):
                     
                     self.controllers[pe].mc_mgrp_create(mc_grp_id)
-                    handle = self.controllers[pe].mc_node_create(1, tunnel_port_list)
+                    handle = self.controllers[pe].mc_node_create(rid, tunnel_port_list)
+                    
+                    
                     self.controllers[pe].mc_node_associate(mc_grp_id, handle)
                     self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
+                    
+                    self.controllers[pe].table_add('whether_encap_egress', 'encap_egress', [str(rid)], [str(tunnel_ids[index]), str(pw_ids[index])])
+                    
                     print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
+                    print("on {}: Adding to whether_encap_egress with action encap_egress: keys = [{}], values = [{}, {}]".format(pe, rid, tunnel_ids[index], pw_ids[index]))
+
+
+                    rid = rid + 1
                     mc_grp_id += 1
                 
 
-        for non_pe in self.non_pe_list:
-            port_list = self.sw_to_tunnel_ports(non_pe)
-            self.controllers[non_pe].mc_mgrp_create(non_pe_mcid)
-            handle = self.controllers[non_pe].mc_node_create(rid, port_list)
-            self.controllers[non_pe].mc_node_associate(non_pe_mcid, handle)
-            for ingress_port in port_list:
-                self.controllers[non_pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port)], [str(non_pe_mcid)])
-                print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(non_pe, ingress_port, non_pe_mcid))
-                mc_grp_id += 1
+        # for non_pe in self.non_pe_list:
+        #     port_list = self.sw_to_tunnel_ports(non_pe)
+        #     self.controllers[non_pe].mc_mgrp_create(non_pe_mcid)
+        #     handle = self.controllers[non_pe].mc_node_create(rid, port_list)
+        #     self.controllers[non_pe].mc_node_associate(non_pe_mcid, handle)
+        #     for ingress_port in port_list:
+        #         self.controllers[non_pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port)], [str(non_pe_mcid)])
+        #         print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(non_pe, ingress_port, non_pe_mcid))
+        #         mc_grp_id += 1
 
         ### logic to be executed at the start-up of the topology
         ### hint: compute ECMP paths here
