@@ -480,7 +480,8 @@ class RoutingController(object):
                     self.controllers[pe].mc_mgrp_create(mc_grp_id)
                     handle_A = self.controllers[pe].mc_node_create(0, ports_list_temp)
                     self.controllers[pe].mc_node_associate(mc_grp_id, handle_A)
-                    self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(ports_list_temp)])
+                    self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
+                    print(ports_list_temp)
                     print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
                     mc_grp_id += 1
                 if customer_id == 'B':
@@ -489,7 +490,8 @@ class RoutingController(object):
                     self.controllers[pe].mc_mgrp_create(mc_grp_id)
                     handle_B = self.controllers[pe].mc_node_create(0, ports_list_temp)
                     self.controllers[pe].mc_node_associate(mc_grp_id, handle_B)
-                    self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(ports_list_temp)])
+                    self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
+                    print(ports_list_temp)
                     print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
                     mc_grp_id += 1
                 
@@ -526,7 +528,7 @@ class RoutingController(object):
                     self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
                     
                     self.controllers[pe].table_add('whether_encap_egress', 'encap_egress', [str(rid)], [str(tunnel_ids[index]), str(pw_ids[index])])
-                    
+                    print(tunnel_port_list)
                     print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
                     print("on {}: Adding to whether_encap_egress with action encap_egress: keys = [{}], values = [{}, {}]".format(pe, rid, tunnel_ids[index], pw_ids[index]))
 
