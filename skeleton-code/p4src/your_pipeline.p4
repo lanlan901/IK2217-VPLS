@@ -220,12 +220,14 @@ control MyIngress(inout headers hdr,
         //whether_decap.apply();// decap or NoAction
 
         if (hdr.tunnel.isValid()) {
-            whether_decap_nhop.apply();
+            if(whether_decap_nhop.apply().hit){}
+            else{
             switch (tunnel_ecmp.apply().action_run) {//set_nhop or ecmp_group or drop
                 ecmp_group: {
                     ecmp_group_to_nhop.apply();
                 }
              }
+            }
         }
         else {
             if (forward_table.apply().hit) { }
@@ -258,6 +260,9 @@ control MyEgress(inout headers hdr,
         hdr.ethernet.etherType = TYPE_TUNNEL;
         hdr.tunnel.tunnel_id = tunnel_id;
         hdr.tunnel.pw_id = pw_id;
+        hdr.ethernet_outer.srcAddr = hdr.ethernet.srcAddr;
+        hdr.ethernet_outer.dstAddr = hdr.ethernet.dstAddr;
+        
     }
 
     table whether_encap_egress{

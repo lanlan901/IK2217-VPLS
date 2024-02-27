@@ -25,7 +25,7 @@
   },
   "topology": {
     "assignment_strategy": "manual",
-    "auto_arp_tables": true,
+    "auto_arp_tables": false,
     "links": [["h1", "s1",{"delay":"10ms"}], 
       ["h2", "s2",{"delay":"20ms"}], 
       ["h3", "s1",{"delay":"30ms"}], 
