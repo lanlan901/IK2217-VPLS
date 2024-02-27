@@ -7,7 +7,7 @@ parser MyParser(packet_in packet,
                 inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
     state start {
-        transition parse_ethernet;
+        transition parse_ethernet_outer;
     }
 
     state parse_ethernet_outer {
