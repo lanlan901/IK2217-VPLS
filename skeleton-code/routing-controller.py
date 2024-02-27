@@ -465,7 +465,7 @@ class RoutingController(object):
                 port_num = self.topo.node_to_node_port_num(pe, host)
                 ports_list_temp = []
                 if customer_id == 'A':
-                    ports_list_temp = A_port_list + tunnel_port_list
+                    ports_list_temp = A_port_list
                     ports_list_temp.remove(port_num)
                     self.controllers[pe].mc_mgrp_create(mc_grp_id)
                     handle_A = self.controllers[pe].mc_node_create(0, ports_list_temp)
@@ -474,7 +474,7 @@ class RoutingController(object):
                     print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
                     mc_grp_id += 1
                 if customer_id == 'B':
-                    ports_list_temp = B_port_list + tunnel_port_list
+                    ports_list_temp = B_port_list
                     ports_list_temp.remove(port_num)
                     self.controllers[pe].mc_mgrp_create(mc_grp_id)
                     handle_B = self.controllers[pe].mc_node_create(0, ports_list_temp)
@@ -483,16 +483,20 @@ class RoutingController(object):
                     print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
                     mc_grp_id += 1
                 
-            for port_num in tunnel_port_list:
+                
+
+                
+                for host in 
+                
                 
                 
                     
-                self.controllers[pe].mc_mgrp_create(mc_grp_id)
-                handle = self.controllers[pe].mc_node_create(1, tunnel_port_list)
-                self.controllers[pe].mc_node_associate(mc_grp_id, handle)
-                self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
-                print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
-                mc_grp_id += 1
+                    self.controllers[pe].mc_mgrp_create(mc_grp_id)
+                    handle = self.controllers[pe].mc_node_create(1, tunnel_port_list)
+                    self.controllers[pe].mc_node_associate(mc_grp_id, handle)
+                    self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
+                    print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
+                    mc_grp_id += 1
                 
 
         for non_pe in self.non_pe_list:
