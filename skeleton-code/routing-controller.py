@@ -123,6 +123,7 @@ class RoutingController(object):
         self.pe_list = []
         self.non_pe_list = []
         self.whether_single = False
+        self.host_list =[]
 
     def init(self):
         self.connect_to_switches()
@@ -226,6 +227,15 @@ class RoutingController(object):
             port_num = self.topo.node_to_node_port_num(sw_name, host)##交换机到主机的端口号
             ports_to_customer[port_num] = customer_id
         return ports_to_customer
+    
+    def get_host_list(self):
+        host_list = []
+        for pe in self.pe_list:
+            hosts_pe = self.topo.get_hosts_connected_to(pe)
+            host_list = host_list + hosts_pe
+            
+        self.host_list = host_list
+        return host_list
 
     def process_network(self):
 
