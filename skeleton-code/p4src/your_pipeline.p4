@@ -257,7 +257,7 @@ control MyEgress(inout headers hdr,
     action encap_egress(tunnel_id_t tunnel_id, pw_id_t pw_id) {
         hdr.ethernet_outer.setValid();
         hdr.tunnel.setValid();
-        hdr.ethernet.etherType = TYPE_TUNNEL;
+        hdr.ethernet_outer.etherType = TYPE_TUNNEL;
         hdr.tunnel.tunnel_id = tunnel_id;
         hdr.tunnel.pw_id = pw_id;
         hdr.ethernet_outer.srcAddr = hdr.ethernet.srcAddr;
