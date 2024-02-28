@@ -124,6 +124,7 @@ class RoutingController(object):
         self.non_pe_list = []
         self.whether_single = False
         self.host_list =[]
+        self.path_list_temp = []
 
     def init(self):
         self.connect_to_switches()
@@ -165,16 +166,14 @@ class RoutingController(object):
 
         for sw_pair in pe_pairs:
             paths = self.topo.get_shortest_paths_between_nodes(sw_pair[0], sw_pair[1])
-            
             for path in paths:
                 if 'sw-cpu' in path:
                     paths.remove(path)
-            
             tunnel_path_list.append(paths)
-
         self.tunnel_path_list = tunnel_path_list
         self.pe_pairs = pe_pairs
         print("pe_pairs: {}".format(pe_pairs))
+        print("tunnel_path_list: {}".format(tunnel_path_list))
 
     def get_pw_id(self, sw_name, host_name): #连接到特定交换机的特定主机和pw_id的映射
         port_num = self.topo.node_to_node_port_num(sw_name, host_name)
@@ -201,15 +200,13 @@ class RoutingController(object):
             ports.append(self.topo.node_to_node_port_num(sw_name, tunnel[index + 1]))
         return ports
     
-    def sw_to_tunnel_ports(self, sw_name): ##交换机到隧道端口
+    def sw_to_tunnel_ports(self, sw_name):
         ports = []
-        for tunnel_tuple in self.tunnel_path_list:
-        # 假设每个元素都是只包含一个元组的列表
-            tunnel = list(tunnel_tuple[0])  # 将元组转换为列表
-            if sw_name in tunnel:
-                print("in tunnel")
-            # 由于get_tunnel_ports期望一个列表，我们直接传入tunnel
-                ports.extend(self.get_tunnel_ports(tunnel, sw_name))  # 使用extend而不是append
+        for tunnel_paths in self.tunnel_path_list:  # 第一层遍历：路径集合
+            for tunnel in tunnel_paths:  # 第二层遍历：单条路径
+                if sw_name in tunnel:
+                    ports.extend(self.get_tunnel_ports(tunnel, sw_name))  # 直接传入tunnel，无需转换为list
+        print("for sw{} to tunnel ports:{}".format(sw_name, ports))
         return ports
 
     
