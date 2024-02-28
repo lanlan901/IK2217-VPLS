@@ -154,7 +154,6 @@ class RoutingController(object):
 
     def generate_tunnel_list(self): ##返回经过所有交换机的隧道列表
         pe = []
-        tunnel_dict = {}
         tunnel_path_list = []
         for sw_name in self.topo.get_p4switches().keys():
             if len(self.topo.get_hosts_connected_to(sw_name)) != 0:
@@ -166,11 +165,14 @@ class RoutingController(object):
 
         for sw_pair in pe_pairs:
             paths = self.topo.get_shortest_paths_between_nodes(sw_pair[0], sw_pair[1])
-            tunnel_dict[tuple(sorted(sw_pair))] = paths
-            #for path in paths:
+            
+            for path in paths:
+                if 'sw-cpu' in path:
+                    paths.remove(path)
+            
             tunnel_path_list.append(paths)
+
         self.tunnel_path_list = tunnel_path_list
-        self.tunnel_dict = tunnel_dict
         self.pe_pairs = pe_pairs
         print("pe_pairs: {}".format(pe_pairs))
 
@@ -473,7 +475,7 @@ class RoutingController(object):
                 port_num = self.topo.node_to_node_port_num(pe, host)
                 ports_list_temp = []
                 handle_host = None
-                handle_tunnel = None
+                #handle_tunnel = None
                 
                 if customer_id == 'A':
                     ports_list_temp = A_port_list[:]
@@ -520,13 +522,14 @@ class RoutingController(object):
                 
                 
                 
-                
+                handle_tunnels = []
                 for index in range(len(tunnel_ids)):
+    
                     print("handle_tunnel:")
                     print(tunnel_port_list)
                     # self.controllers[pe].mc_mgrp_create(mc_grp_id)
                     handle_tunnel = self.controllers[pe].mc_node_create(rid, tunnel_port_list)
-    
+                    handle_tunnels.append(handle_tunnel)
                     # self.controllers[pe].mc_node_associate(mc_grp_id, handle)
                     # self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
                     
@@ -539,7 +542,8 @@ class RoutingController(object):
             
                 self.controllers[pe].mc_mgrp_create(mc_grp_id)
                 self.controllers[pe].mc_node_associate(mc_grp_id, handle_host)
-                self.controllers[pe].mc_node_associate(mc_grp_id, handle_tunnel)
+                for handle_tunnel in handle_tunnels:
+                    self.controllers[pe].mc_node_associate(mc_grp_id, handle_tunnel)
                 self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
                 print("handle_tunnel and handle_host ass to mgrp: {}".format(mc_grp_id))
                 print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
