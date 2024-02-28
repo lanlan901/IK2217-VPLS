@@ -201,13 +201,16 @@ class RoutingController(object):
         return ports
     
     def sw_to_tunnel_ports(self, sw_name):
-        ports = []
-        for tunnel_paths in self.tunnel_path_list:  # 第一层遍历：路径集合
-            for tunnel in tunnel_paths:  # 第二层遍历：单条路径
+        port_set = set()  # 使用集合来暂存端口号，以自动去除重复元素
+        for tunnel_paths in self.tunnel_path_list:
+            for tunnel in tunnel_paths:
                 if sw_name in tunnel:
-                    ports.extend(self.get_tunnel_ports(tunnel, sw_name))  # 直接传入tunnel，无需转换为list
+                    port_set.update(self.get_tunnel_ports(tunnel, sw_name))  # 使用update方法添加元素到集合中
+
+        ports = list(port_set)  # 将集合转换回列表
         print("for sw{} to tunnel ports:{}".format(sw_name, ports))
         return ports
+
 
     
     def sw_to_host_ports(self, sw_name): ##交换机到主机端口
@@ -396,8 +399,13 @@ class RoutingController(object):
                     print("on {}: Adding to ecmp_group_to_nhop with action set_nhop: keys = [{}, {}], values = [{}]".format(pe1, ecmp_group_id1, i, sw1_ports[i]))
                     print("on {}: Adding to ecmp_group_to_nhop with action set_nhop: keys = [{}, {}], values = [{}]".format(pe2, ecmp_group_id2, i, sw2_ports[i]))
 
-                
-                for host1 in self.topo.get_hosts_connected_to(pe1):
+                for path in paths:
+                    ex_sw1 = path[path.index(pe1) + 1]
+                    sw_port1 = self.topo.node_to_node_port_num(pe1, ex_sw1)#与pe1相邻的sw的端口
+                    ex_sw2 = path[path.index(pe2) - 1]
+                    sw_port2 = self.topo.node_to_node_port_num(pe2, ex_sw2)#与pe2相邻的sw的端口
+                    
+                    for host1 in self.topo.get_hosts_connected_to(pe1):
                         for host2 in self.topo.get_hosts_connected_to(pe2):
                             customer1_id = self.vpls_conf['hosts'][host1]
                             customer2_id = self.vpls_conf['hosts'][host2]

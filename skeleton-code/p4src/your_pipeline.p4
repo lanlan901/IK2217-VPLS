@@ -226,6 +226,12 @@ control MyIngress(inout headers hdr,
                 ecmp_group: {
                     ecmp_group_to_nhop.apply();
                 }
+                set_nhop: {
+                    hdr.ethernet_outer.setValid();
+                    hdr.ethernet_outer.etherType = TYPE_TUNNEL;
+                    hdr.ethernet_outer.srcAddr = hdr.ethernet.srcAddr;
+                    hdr.ethernet_outer.dstAddr = hdr.ethernet.dstAddr;
+                }
              }
             }
         }
