@@ -245,9 +245,7 @@ class RoutingController(object):
         mc_grp_id = 1
         
 
-        if(self.whether_single):
-            print("is single")
-            pe = self.pe_list[0]
+        for pe in self.pe_list: #topo1 or topo6 h5-h6
             hosts = self.topo.get_hosts_connected_to(pe)
             host_pairs = list(itertools.combinations(hosts, 2))
 
@@ -478,7 +476,7 @@ class RoutingController(object):
                 handle_tunnel = None
                 
                 if customer_id == 'A':
-                    ports_list_temp = A_port_list
+                    ports_list_temp = A_port_list[:]
                     ports_list_temp.remove(port_num)
                     #self.controllers[pe].mc_mgrp_create(mc_grp_id)
                     handle_host = self.controllers[pe].mc_node_create(0, ports_list_temp)
@@ -489,7 +487,7 @@ class RoutingController(object):
                     #print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
                     #mc_grp_id += 1
                 if customer_id == 'B':
-                    ports_list_temp = B_port_list
+                    ports_list_temp = B_port_list[:]
                     ports_list_temp.remove(port_num)
                     #self.controllers[pe].mc_mgrp_create(mc_grp_id)
                     handle_host = self.controllers[pe].mc_node_create(0, ports_list_temp)
@@ -524,23 +522,20 @@ class RoutingController(object):
                 
                 
                 for index in range(len(tunnel_ids)):
-                    
+                    print("handle_tunnel:")
+                    print(tunnel_port_list)
                     # self.controllers[pe].mc_mgrp_create(mc_grp_id)
                     handle_tunnel = self.controllers[pe].mc_node_create(rid, tunnel_port_list)
-                    
-                    
+    
                     # self.controllers[pe].mc_node_associate(mc_grp_id, handle)
                     # self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
                     
                     self.controllers[pe].table_add('whether_encap_egress', 'encap_egress', [str(rid)], [str(tunnel_ids[index]), str(pw_ids[index])])
-                    print("handle_tunnel:")
-                    print(tunnel_port_list)
+
                     #print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
                     print("on {}: Adding to whether_encap_egress with action encap_egress: keys = [{}], values = [{}, {}]".format(pe, rid, tunnel_ids[index], pw_ids[index]))
-
-
-                    rid = rid + 1
                     
+                    rid = rid + 1    
             
                 self.controllers[pe].mc_mgrp_create(mc_grp_id)
                 self.controllers[pe].mc_node_associate(mc_grp_id, handle_host)
@@ -548,9 +543,7 @@ class RoutingController(object):
                 self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
                 print("handle_tunnel and handle_host ass to mgrp: {}".format(mc_grp_id))
                 print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
-                mc_grp_id += 1
-                    
-                
+                mc_grp_id += 1      
 
         # for non_pe in self.non_pe_list:
         #     port_list = self.sw_to_tunnel_ports(non_pe)

@@ -1656,8 +1656,8 @@
             },
             {
               "match_type" : "exact",
-              "name" : "meta.tunnel_id",
-              "target" : ["scalars", "metadata.tunnel_id"],
+              "name" : "hdr.tunnel.tunnel_id",
+              "target" : ["tunnel", "tunnel_id"],
               "mask" : null
             }
           ],

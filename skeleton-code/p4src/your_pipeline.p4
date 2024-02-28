@@ -98,7 +98,7 @@ control MyIngress(inout headers hdr,
     table tunnel_ecmp {
         key = {
             standard_metadata.ingress_port: exact;
-            meta.tunnel_id: exact;
+            hdr.tunnel.tunnel_id: exact;
         }
         actions = {
             set_nhop;
