@@ -1,15 +1,24 @@
 cd skeleton-code
+
 sudo p4run --config 01-methane-p4app.json
 sudo p4run --config 02-ethylene-p4app.json
-sudo python routing-controller.py 01-methane-vpls.conf
+sudo p4run --config 03-cyclopropane-p4app.json
+sudo p4run --config 04-rooster-p4app.json
+sudo p4run --config 05-dioxetane-p4app.json
+sudo p4run --config 06-aries-p4app.json
 
+
+sudo python routing-controller.py 01-methane-vpls.conf
 sudo python routing-controller.py 02-ethylene-vpls.conf
+sudo python routing-controller.py 03-cyclopropane-vpls.conf
+sudo python routing-controller.py 04-rooster-vpls.conf
+sudo python routing-controller.py 05-dioxetane-vpls.conf
+sudo python routing-controller.py 06-aries-vpls.conf
+
 sudo bash skeleton-code/test_topology_01.sh
 
 ssh p4@192.168.56.101
-cd /
-cd media
-cd shared
-cd skeleton-code
+cd /media/shared/skeleton-code
+
 
 git diff master origin/master

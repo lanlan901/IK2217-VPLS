@@ -43,8 +43,6 @@ class EventBasedController(threading.Thread):
         self.id_to_switch = params["id_to_switch"]
         self.controller = SimpleSwitchAPI(thrift_port)
 
-        self.interface = params["interface"]
-
     def run(self):
         sniff(iface=self.cpu_port_intf, prn=self.recv_msg_cpu)
 
@@ -63,44 +61,10 @@ class EventBasedController(threading.Thread):
                 [(rtt_header.customer_id, rtt_header.ip_addr_src, rtt_header.ip_addr_dst, rtt_header.rtt)])
 
     def process_packet(self, packet_data):
-        for macAddr, tunnel_id, pw_id, ingress_port in packet_data:
+        for macAddr in packet_data:
             ##学习源MAC
             self.controller.table_add('learning_table', 'NoAction', [str(macAddr)], [])
-            # print("处理包")
-            # #来自主机的包
-            # if tunnel_id < 0:
-            #     for port in self.interface.sw_to_host_ports(self.sw_name):
-            #         egress_spec = port
-            #         ##如果不是进来的端口且客户标签一致则转发到对应主机
-            #         if port != ingress_port and self.interface.mac_to_customer(self.sw_name)[macAddr] == self.interface.ports_to_customer_mapping(self.sw_name)[port]:
-            #             self.controller.table_add('forward_table', 'forward', [str(ingress_port), str(macAddr)], [str(egress_spec)])
-            #         ##否则尝试封装并发到隧道
-            #         else:
-            #             self.controller.table_add('whether_encap_egress', 'encap_egress', [str(egress_spec)], [str(tunnel_id), str(pw_id)])
-            # #来自隧道的包
-            # else:
-            #     paths = self.interface.tunnel_path_list[tunnel_id]
-
-            #     if len(paths) == 1:
-            #         self.controller.table_add('forward_table', 'forward', [str(ingress_port), str(macAddr)], [str(egress_spec)])
-            #         ##如果源mac对应的客户id 和 当前PE的主机端口对应的客户id一致则转发
-            #     else:
-            #         for path in paths:
-            #             egress_spec = self.interface.get_tunnel_ports(path, self.sw_name)[0]
-            #             if self.interface.mac_to_customer(self.sw_name)[macAddr] == self.interface.ports_to_customer_mapping(self.sw_name)[port]:
-            #                 self.controller.table_add('forward_table', 'forward', [str(ingress_port), str(macAddr)], [str(egress_spec)])
-            #             else:
-            #                 continue
         pass
-            
-    def mac_to_customer_mapping(self, sw_name):
-        mac_to_customer = {}
-        connected_hosts = self.topo.get_hosts_connected_to(sw_name)
-        for host in connected_hosts:
-            customer_id = self.vpls_conf['hosts'][host]
-            host_mac = self.topo.get_host_mac(host)
-            mac_to_customer[host_mac] = customer_id
-        return mac_to_customer
     
     def process_packet_rtt(self, packet_data):
         for customer_id, ip_addr_src, ip_addr_dst, rtt in packet_data:
@@ -122,7 +86,7 @@ class RoutingController(object):
         self.pe_pairs = []
         self.pe_list = []
         self.non_pe_list = []
-        self.whether_single = False
+        # self.whether_single = False
         self.host_list =[]
         self.path_list_temp = []
 
@@ -211,8 +175,6 @@ class RoutingController(object):
         print("for sw{} to tunnel ports:{}".format(sw_name, ports))
         return ports
 
-
-    
     def sw_to_host_ports(self, sw_name): ##交换机到主机端口
         ports = []
         host_list = self.topo.get_hosts_connected_to(sw_name)
@@ -220,15 +182,6 @@ class RoutingController(object):
             port = self.topo.node_to_node_port_num(sw_name, host)
             ports.append(port)
         return ports
-
-    def ports_to_customer_mapping(self,sw_name):
-        ports_to_customer = {}
-        connected_hosts = self.topo.get_hosts_connected_to(sw_name)
-        for host in connected_hosts:
-            customer_id = self.vpls_conf['hosts'][host]
-            port_num = self.topo.node_to_node_port_num(sw_name, host)##交换机到主机的端口号
-            ports_to_customer[port_num] = customer_id
-        return ports_to_customer
     
     def get_host_list(self):
         host_list = []
@@ -270,35 +223,6 @@ class RoutingController(object):
                 
                 print("on {}: Adding to forward_table with action forward: keys = [{}, {}], values = [{}]".format(pe, host1_port, host2_mac, host2_port))
                 print("on {}: Adding to forward_table with action forward: keys = [{}, {}], values = [{}]".format(pe, host2_port, host1_mac, host1_port))
-
-            # mcast_grp_id = 1    
-            
-            # ports = self.sw_to_host_ports(pe)
-            # print(ports)
-            # for host in hosts:
-            #     host_temp = hosts[:]
-            #     host_temp.remove(host)
-            #     ports_temp = []
-            #     host_port = self.topo.node_to_node_port_num(pe, host)
-            #     for host2 in host_temp:
-            #         customer1_id = self.vpls_conf['hosts'][host]
-            #         customer2_id = self.vpls_conf['hosts'][host2]
-            #         if(customer1_id != customer2_id):
-            #             continue
-            #         host2_port = self.topo.node_to_node_port_num(pe, host2)
-            #         ports_temp.append(host2_port)
-                
-                
-            #     print(ports_temp)
-            #     self.controllers[pe].mc_mgrp_create(mcast_grp_id)
-            #     handle = self.controllers[pe].mc_node_create(0, ports_temp)
-            #     self.controllers[pe].mc_node_associate(mcast_grp_id, handle)
-
-            #     self.controllers[pe].table_add("select_mcast_grp", "set_mcast_grp", [str(host_port)], [str(mcast_grp_id)])
-            #     print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, host_port, mcast_grp_id))
-
-            #     mcast_grp_id = mcast_grp_id + 1
-
 
         for pe_pair in self.pe_pairs:
             print("generate_pe_pairs")
@@ -444,7 +368,6 @@ class RoutingController(object):
 
         ## muilticast: 1. 收到主机的包发送到相同客户标签的主机 和 隧道端口 
         #2. 收到隧道的包发送到所有主机
-        # 3. 非PE直接forward packet
         
         for pe in self.pe_list:        
             A_port_list = []
@@ -463,16 +386,6 @@ class RoutingController(object):
 
             print("for pe:{} A_port_list:{}".format(pe, A_port_list))
             print("for pe:{} B_list_list:{}".format(pe, B_port_list))
-
-            # if B_port_list:
-            #     self.controllers[pe].mc_mgrp_create(mc_grp_id_B)
-            #     handle_B = self.controllers[pe].mc_node_create(0, B_port_list)
-            #     self.controllers[pe].mc_node_associate(mc_grp_id_B, handle_B)
-
-            # if tunnel_port_list:
-            #     self.controllers[pe].mc_mgrp_create(mc_grp_id_tunnel)
-            #     handle_tunnel = self.controllers[pe].mc_node_create(1, tunnel_port_list) ##rid = 1
-            #     self.controllers[pe].mc_node_associate(mc_grp_id_tunnel, handle_tunnel)
 
             rid = 1
             for host in self.topo.get_hosts_connected_to(pe): 
@@ -552,17 +465,7 @@ class RoutingController(object):
                 self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
                 print("handle_tunnel and handle_host ass to mgrp: {}".format(mc_grp_id))
                 print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
-                mc_grp_id += 1      
-
-        # for non_pe in self.non_pe_list:
-        #     port_list = self.sw_to_tunnel_ports(non_pe)
-        #     self.controllers[non_pe].mc_mgrp_create(non_pe_mcid)
-        #     handle = self.controllers[non_pe].mc_node_create(rid, port_list)
-        #     self.controllers[non_pe].mc_node_associate(non_pe_mcid, handle)
-        #     for ingress_port in port_list:
-        #         self.controllers[non_pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(ingress_port)], [str(non_pe_mcid)])
-        #         print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(non_pe, ingress_port, non_pe_mcid))
-        #         mc_grp_id += 1
+                mc_grp_id += 1
 
         ### logic to be executed at the start-up of the topology
         ### hint: compute ECMP paths here
@@ -590,7 +493,6 @@ if __name__ == "__main__":
         params["cpu_port_intf"] = cpu_port_intf
         params["thrift_port"] = thrift_port
         params["id_to_switch"] = id_to_switch
-        params["interface"] = controller
         thread = EventBasedController(params)
         thread.setName('MyThread ' + str(sw_name))
         thread.daemon = True

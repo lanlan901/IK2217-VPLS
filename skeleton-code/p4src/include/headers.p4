@@ -71,9 +71,6 @@ struct metadata {
     bit<9> ingress_port;
     bit<14> ecmp_hash;
     bit<14> ecmp_group_id;
-    tunnel_id_t tunnel_id;
-    pw_id_t pw_id;
-    bit<2> is_tunnel;
 }
 
 struct headers {

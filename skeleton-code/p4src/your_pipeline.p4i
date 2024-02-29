@@ -857,9 +857,6 @@ struct metadata {
     bit<9> ingress_port;
     bit<14> ecmp_hash;
     bit<14> ecmp_group_id;
-    tunnel_id_t tunnel_id;
-    pw_id_t pw_id;
-    bit<2> is_tunnel;
 }
 
 struct headers {
@@ -966,29 +963,15 @@ control MyIngress(inout headers hdr,
         mark_to_drop(standard_metadata);
     }
 
+    //normal forwarding
     action forward (egressSpec_t port) {
         standard_metadata.egress_spec = port;
     }
 
-    //TASK 1 : normal forwarding table
     table forward_table {
         key = {
             standard_metadata.ingress_port: exact;
             hdr.ethernet.dstAddr: exact;
-        }
-        actions = {
-            forward;
-            NoAction;
-        }
-        size = 1024;
-        default_action = NoAction;
-    }
-
-    table tunnel_forward_table {
-        key = {
-            standard_metadata.ingress_port: exact;
-            hdr.tunnel.tunnel_id: exact;
-            hdr.tunnel.pw_id: exact;
         }
         actions = {
             forward;
@@ -1047,19 +1030,6 @@ control MyIngress(inout headers hdr,
         default_action = drop;
     }
 
-    table ipv4_lpm {
-        key = {
-            hdr.ipv4.dstAddr: lpm;
-        }
-        actions = {
-            set_nhop;
-            ecmp_group;
-            drop;
-        }
-        size = 1024;
-        default_action = drop;
-    }
-
     //TASK 3 : multicasting
     action set_mcast_grp (bit<16> mcast_grp) {
         standard_metadata.mcast_grp = mcast_grp;
@@ -1076,7 +1046,6 @@ control MyIngress(inout headers hdr,
         size = 1024;
         default_action = NoAction;
     }
-
 
     //TASK 4 : L2 learning
     action mac_learn() {
@@ -1096,6 +1065,7 @@ control MyIngress(inout headers hdr,
         default_action = mac_learn;
     }
 
+    //encap && decap
     action encap(tunnel_id_t tunnel_id, pw_id_t pw_id) {
         hdr.ethernet_outer.setValid();
         hdr.ethernet_outer.srcAddr = hdr.ethernet.srcAddr;
@@ -1115,22 +1085,6 @@ control MyIngress(inout headers hdr,
         }
         actions = {
             encap;
-            NoAction;
-        }
-        size = 1024;
-        default_action = NoAction;
-    }
-
-    action decap(){
-        hdr.ethernet_outer.setInvalid();
-        hdr.tunnel.setInvalid();
-    }
-    table whether_decap {
-        key = {
-            standard_metadata.ingress_port: exact;
-        }
-        actions = {
-            decap;
             NoAction;
         }
         size = 1024;
@@ -1175,12 +1129,6 @@ control MyIngress(inout headers hdr,
         }
         else {
             if (forward_table.apply().hit) { }
-            // else if (hdr.ipv4.isValid()) {
-            //     switch (ipv4_lpm.apply().action_run){
-            //         ecmp_group: { ecmp_group_to_nhop.apply(); }
-            //     }
-            // }
-            // else if (tunnel_forward_table.apply().hit) { }
             else select_mcast_grp.apply();
         }
     }
@@ -1191,7 +1139,7 @@ control MyIngress(inout headers hdr,
 ****************  E G R E S S   P R O C E S S I N G   *******************
 
 *************************************************************************/
-# 255 "p4src/your_pipeline.p4"
+# 206 "p4src/your_pipeline.p4"
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
@@ -1208,7 +1156,6 @@ control MyEgress(inout headers hdr,
         hdr.tunnel.pw_id = pw_id;
         hdr.ethernet_outer.srcAddr = hdr.ethernet.srcAddr;
         hdr.ethernet_outer.dstAddr = hdr.ethernet.dstAddr;
-
     }
 
     table whether_encap_egress{
@@ -1248,7 +1195,7 @@ control MyEgress(inout headers hdr,
 *************   C H E C K S U M    C O M P U T A T I O N   **************
 
 *************************************************************************/
-# 310 "p4src/your_pipeline.p4"
+# 260 "p4src/your_pipeline.p4"
 control MyComputeChecksum(inout headers hdr, inout metadata meta) {
      apply {
  update_checksum(
@@ -1275,7 +1222,7 @@ control MyComputeChecksum(inout headers hdr, inout metadata meta) {
 ***********************  S W I T C H  *******************************
 
 *************************************************************************/
-# 335 "p4src/your_pipeline.p4"
+# 285 "p4src/your_pipeline.p4"
 //switch architecture
 V1Switch(
 MyParser(),
