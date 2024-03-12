@@ -981,7 +981,7 @@ control MyIngress(inout headers hdr,
         default_action = NoAction;
     }
 
-    //TASK 2: ECMP
+    //ECMP
     action ecmp_group (bit<14> ecmp_group_id, bit<16> num_nhops) {
         hash(meta.ecmp_hash,
             HashAlgorithm.crc32,
@@ -1030,7 +1030,7 @@ control MyIngress(inout headers hdr,
         default_action = drop;
     }
 
-    //TASK 3 : multicasting
+    //multicasting
     action set_mcast_grp (bit<16> mcast_grp) {
         standard_metadata.mcast_grp = mcast_grp;
     }
@@ -1047,7 +1047,7 @@ control MyIngress(inout headers hdr,
         default_action = NoAction;
     }
 
-    //TASK 4 : L2 learning
+    //L2 learning
     action mac_learn() {
         meta.ingress_port = standard_metadata.ingress_port;
         clone3(CloneType.I2E, 100, meta);
