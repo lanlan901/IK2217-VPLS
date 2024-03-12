@@ -62,7 +62,7 @@ class EventBasedController(threading.Thread):
 
     def process_packet(self, packet_data):
         for macAddr in packet_data:
-            ##学习源MAC
+            ##learn MAC address
             self.controller.table_add('learning_table', 'NoAction', [str(macAddr)], [])
         pass
     
@@ -117,7 +117,8 @@ class RoutingController(object):
     def get_switch_id(self, sw_name):
         return "{:02x}".format(self.topo.get_p4switches()[sw_name]["sw_id"])
 
-    def generate_tunnel_list(self): ##返回经过所有交换机的隧道列表
+    def generate_tunnel_list(self): ##genernate all the pe_pairs and tunnel paths  返回经过所有交换机的隧道列表
+
         pe = []
         tunnel_path_list = []
         for sw_name in self.topo.get_p4switches().keys():
@@ -125,9 +126,6 @@ class RoutingController(object):
                 pe.append(sw_name)
                 print("pe:{}".format(pe))
         pe_pairs = list(itertools.combinations(pe, 2))
-        if len(pe) == 1:
-            self.whether_single = True   
-
         for sw_pair in pe_pairs:
             paths = self.topo.get_shortest_paths_between_nodes(sw_pair[0], sw_pair[1])
             for path in paths:
@@ -139,7 +137,8 @@ class RoutingController(object):
         print("pe_pairs: {}".format(pe_pairs))
         print("tunnel_path_list: {}".format(tunnel_path_list))
 
-    def get_pw_id(self, sw_name, host_name): #连接到特定交换机的特定主机和pw_id的映射
+    def get_pw_id(self, sw_name, host_name): #mapping between host and pw_id, given switch  连接到特定交换机的特定主机和pw_id的映射
+
         port_num = self.topo.node_to_node_port_num(sw_name, host_name)
         customer_label = self.vpls_conf['hosts'][host_name]
         pw_id = hash(customer_label + sw_name) %1024 + port_num
@@ -152,30 +151,29 @@ class RoutingController(object):
             elif len(self.topo.get_hosts_connected_to(sw_name)) == 0 :
                 self.non_pe_list.append(sw_name)
 
-    def get_tunnel_ports(self, tunnel, sw_name): ##单个隧道中交换机的端口号
+    def sw_to_tunnel_ports(self, sw_name): ##given switch, get the ports connected to tunnel
+        port_set = set()
+        for tunnel_paths in self.tunnel_path_list:
+            for tunnel in tunnel_paths:
+                if sw_name in tunnel:
+                    port_set.update(self.get_tunnel_ports(tunnel, sw_name))
+        ports = list(port_set)
+        print("for sw{} to tunnel ports:{}".format(sw_name, ports))
+        return ports
+    
+    def get_tunnel_ports(self, tunnel, sw_name):
         ports = []
-        if tunnel.index(sw_name) == 0:#起点
+        if tunnel.index(sw_name) == 0:#start
             ports.append(self.topo.node_to_node_port_num(sw_name, tunnel[1]))
-        elif tunnel.index(sw_name) == len(tunnel) - 1:#终点
+        elif tunnel.index(sw_name) == len(tunnel) - 1:#end
             ports.append(self.topo.node_to_node_port_num(sw_name, tunnel[len(tunnel) - 2]))
-        else:#中间
+        else:#middle
             index = tunnel.index(sw_name)
             ports.append(self.topo.node_to_node_port_num(sw_name, tunnel[index - 1]))
             ports.append(self.topo.node_to_node_port_num(sw_name, tunnel[index + 1]))
         return ports
-    
-    def sw_to_tunnel_ports(self, sw_name):
-        port_set = set()  # 使用集合来暂存端口号，以自动去除重复元素
-        for tunnel_paths in self.tunnel_path_list:
-            for tunnel in tunnel_paths:
-                if sw_name in tunnel:
-                    port_set.update(self.get_tunnel_ports(tunnel, sw_name))  # 使用update方法添加元素到集合中
 
-        ports = list(port_set)  # 将集合转换回列表
-        print("for sw{} to tunnel ports:{}".format(sw_name, ports))
-        return ports
-
-    def sw_to_host_ports(self, sw_name): ##交换机到主机端口
+    def sw_to_host_ports(self, sw_name): ##given switch, get the ports connected to hosts
         ports = []
         host_list = self.topo.get_hosts_connected_to(sw_name)
         for host in host_list:
@@ -183,7 +181,7 @@ class RoutingController(object):
             ports.append(port)
         return ports
     
-    def get_host_list(self):
+    def get_host_list(self): ##get all the hosts
         host_list = []
         for pe in self.pe_list:
             hosts_pe = self.topo.get_hosts_connected_to(pe)
@@ -200,7 +198,7 @@ class RoutingController(object):
         mc_grp_id = 1
         
 
-        for pe in self.pe_list: #topo1 or topo6 h5-h6
+        for pe in self.pe_list: #for directly forward situation (topo 1 or h5-h6 in topo6)
             hosts = self.topo.get_hosts_connected_to(pe)
             host_pairs = list(itertools.combinations(hosts, 2))
 
@@ -223,7 +221,9 @@ class RoutingController(object):
                 
                 print("on {}: Adding to forward_table with action forward: keys = [{}, {}], values = [{}]".format(pe, host1_port, host2_mac, host2_port))
                 print("on {}: Adding to forward_table with action forward: keys = [{}, {}], values = [{}]".format(pe, host2_port, host1_mac, host1_port))
+        
 
+        #ecmp
         for pe_pair in self.pe_pairs:
             print("generate_pe_pairs")
             pe1 = pe_pair[0]
@@ -232,14 +232,14 @@ class RoutingController(object):
         
             paths =  self.tunnel_path_list[tunnel_id]
             
-            if len(paths) == 1:#如果这个隧道只有一条路径
+            if len(paths) == 1:#only one path for the tunnel
                 path = paths[0]
 
                 #设置pe1 pe2的表
                 ex_sw1 = path[path.index(pe1) + 1]
-                sw_port1 = self.topo.node_to_node_port_num(pe1, ex_sw1)#与pe1相邻的sw的端口
+                sw_port1 = self.topo.node_to_node_port_num(pe1, ex_sw1)#port between pe1 and sw
                 ex_sw2 = path[path.index(pe2) - 1]
-                sw_port2 = self.topo.node_to_node_port_num(pe2, ex_sw2)#与pe2相邻的sw的端口
+                sw_port2 = self.topo.node_to_node_port_num(pe2, ex_sw2)
                 sw1_mac = self.topo.node_to_node_mac(ex_sw1, pe1)
                 sw2_mac = self.topo.node_to_node_mac(ex_sw2, pe2)
                 for host1 in self.topo.get_hosts_connected_to(pe1):
@@ -249,21 +249,25 @@ class RoutingController(object):
                         customer2_id = self.vpls_conf['hosts'][host2]
                         if(customer1_id != customer2_id):
                             continue
-                        host_port1 = self.topo.node_to_node_port_num(pe1, host1)#与pe1相邻的host的端口
-                        host_port2 = self.topo.node_to_node_port_num(pe2, host2)#与pe2相邻的host的端口
+                        host_port1 = self.topo.node_to_node_port_num(pe1, host1)#port between pe1 and host1
+                        host_port2 = self.topo.node_to_node_port_num(pe2, host2)
+
                         host1_mac = self.topo.get_host_mac(host1)
                         host2_mac = self.topo.get_host_mac(host2)
+
                         pw_id1 = self.get_pw_id(pe1, host1)
                         pw_id2 = self.get_pw_id(pe2, host2)
-                        #设置已封装包的转发
+
+                        #forward the encapsulated packet #设置已封装包的转发
                         self.controllers[pe1].table_add("tunnel_ecmp", "set_nhop", [str(host_port1), str(tunnel_id)], [str(sw_port1)])
                         self.controllers[pe2].table_add("tunnel_ecmp", "set_nhop", [str(host_port2), str(tunnel_id)], [str(sw_port2)])
-                        #设置封装包
+
+                        #check whether needs encapsulation or not #设置封装包
                         self.controllers[pe1].table_add("whether_encap", "encap", [str(host_port1), str(host1_mac), str(host2_mac)], 
                                                         [str(tunnel_id), str(pw_id2)])
                         self.controllers[pe2].table_add("whether_encap", "encap", [str(host_port2), str(host2_mac), str(host1_mac)], 
                                                         [str(tunnel_id), str(pw_id1)])
-                        #设置解封包
+                        #check whether it can be decapsulated and forward #设置解封包
                         self.controllers[pe1].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port1), str(pw_id1)], [str(host_port1)])
                         self.controllers[pe2].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port2), str(pw_id2)], [str(host_port2)])
 
@@ -276,12 +280,13 @@ class RoutingController(object):
                         print("on {}: Adding to whether_decap_nhop with action decap_nhop: keys = [{}, {}], values = [{}]".format(pe1, sw_port1, pw_id1, host_port1))
                         print("on {}: Adding to whether_decap_nhop with action decap_nhop: keys = [{}, {}], values = [{}]".format(pe2, sw_port2, pw_id2, host_port2))
 
-
-                for sw in path[1:-1]:#设置路径中间的节点的表
+                ## for switches in the middle of the path
+                #设置路径中间的节点的表
+                for sw in path[1:-1]:
                     sw1 = path[path.index(sw) - 1]
                     sw2 = path[path.index(sw) + 1]
-                    sw_port1 = self.topo.node_to_node_port_num(sw, sw1)#与pe1相邻的sw的端口
-                    sw_port2 = self.topo.node_to_node_port_num(sw, sw2)#与pe2相邻的sw的端口
+                    sw_port1 = self.topo.node_to_node_port_num(sw, sw1)
+                    sw_port2 = self.topo.node_to_node_port_num(sw, sw2)
                     self.controllers[sw].table_add("tunnel_ecmp", "set_nhop", [str(sw_port1), str(tunnel_id)], [str(sw_port2)])
                     self.controllers[sw].table_add("tunnel_ecmp", "set_nhop", [str(sw_port2), str(tunnel_id)], [str(sw_port1)])
 
@@ -289,15 +294,15 @@ class RoutingController(object):
                     print("on {}: Adding to tunnel_ecmp with action set_nhop: keys = [{}, {}], values = [{}]".format(sw, sw_port2, tunnel_id, sw_port1))
 
 
-            else:#todo ecmp 多条路径
+            else:## multiple paths 多条路径
                 sw1_ports = []
                 sw2_ports = []
                 for path in paths:
                     ex_sw1 = path[path.index(pe1) + 1]
-                    sw_port1 = self.topo.node_to_node_port_num(pe1, ex_sw1)#与pe1相邻的sw的端口
+                    sw_port1 = self.topo.node_to_node_port_num(pe1, ex_sw1)
                     sw1_ports.append(sw_port1)
                     ex_sw2 = path[path.index(pe2) - 1]
-                    sw_port2 = self.topo.node_to_node_port_num(pe2, ex_sw2)#与pe2相邻的sw的端口
+                    sw_port2 = self.topo.node_to_node_port_num(pe2, ex_sw2)
                     sw2_ports.append(sw_port2)
 
                     for sw in path[1:-1]:#设置路径中间的节点的表
@@ -311,12 +316,13 @@ class RoutingController(object):
                         print("on {}: Adding to tunnel_ecmp with action set_nhop: keys = [{}, {}], values = [{}]".format(sw, sw_port2, tunnel_id, sw_port1))
 
 
-
-                ecmp_group_id1 = ecmp_group_id#此tunnel中给pe1分配的groupid
+                #此tunnel中给pe1分配的groupid
+                ecmp_group_id1 = ecmp_group_id
                 ecmp_group_id2 = ecmp_group_id + 1
                 ecmp_group_id = ecmp_group_id + 2
 
-                for i in range(len(sw1_ports)):#设置好ecmptonhop  对应hash值
+                #set ecmp group to next hop
+                for i in range(len(sw1_ports)):
                     self.controllers[pe1].table_add("ecmp_group_to_nhop", "set_nhop", [str(ecmp_group_id1), str(i)], [str(sw1_ports[i])])
                     self.controllers[pe2].table_add("ecmp_group_to_nhop", "set_nhop", [str(ecmp_group_id2), str(i)], [str(sw2_ports[i])])
 
@@ -342,17 +348,17 @@ class RoutingController(object):
                             pw_id1 = self.get_pw_id(pe1, host1)
                             pw_id2 = self.get_pw_id(pe2, host2)
 
-                            #设置ecmp组
+                            #forward the encapsulated packet
                             self.controllers[pe1].table_add("tunnel_ecmp", "ecmp_group", 
                                                             [str(host_port1), str(tunnel_id)], [str(ecmp_group_id1), str(len(sw1_ports))])
                             self.controllers[pe2].table_add("tunnel_ecmp", "ecmp_group", 
                                                             [str(host_port2), str(tunnel_id)], [str(ecmp_group_id2), str(len(sw2_ports))])
-                            #设置封装
+                            #check whether needs encapsulation or not
                             self.controllers[pe1].table_add("whether_encap", "encap", [str(host_port1), str(host1_mac), str(host2_mac)], 
                                                         [str(tunnel_id), str(pw_id2)])
                             self.controllers[pe2].table_add("whether_encap", "encap", [str(host_port2), str(host2_mac), str(host1_mac)], 
                                                         [str(tunnel_id), str(pw_id1)])
-                            #设置解封包
+                            #check whether it can be decapsulated and forward
                             self.controllers[pe1].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port1), str(pw_id1)], [str(host_port1)])
                             self.controllers[pe2].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port2), str(pw_id2)], [str(host_port2)])
 
@@ -366,14 +372,11 @@ class RoutingController(object):
                             print("on {}: Adding to whether_decap_nhop with action decap_nhop: keys = [{}, {}], values = [{}]".format(pe2, sw_port2, pw_id2, host_port2))
 
 
-        ## muilticast: 1. 收到主机的包发送到相同客户标签的主机 和 隧道端口 
-        #2. 收到隧道的包发送到所有主机
-        
+        ## muilticast
         for pe in self.pe_list:        
             A_port_list = []
             B_port_list = []
 
-            host_port_list = self.sw_to_host_ports(pe)
             tunnel_port_list = self.sw_to_tunnel_ports(pe)
 
             for host in self.topo.get_hosts_connected_to(pe): 
@@ -393,41 +396,33 @@ class RoutingController(object):
                 port_num = self.topo.node_to_node_port_num(pe, host)
                 ports_list_temp = []
                 handle_host = None
-                #handle_tunnel = None
-                
+
+                #handle for switch to hosts 主机节点
                 if customer_id == 'A':
                     ports_list_temp = A_port_list[:]
                     ports_list_temp.remove(port_num)
-                    #self.controllers[pe].mc_mgrp_create(mc_grp_id)
                     handle_host = self.controllers[pe].mc_node_create(0, ports_list_temp)
-                    #self.controllers[pe].mc_node_associate(mc_grp_id, handle_A)
-                    #self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
                     print("handle_host:")
                     print(ports_list_temp)
-                    #print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
-                    #mc_grp_id += 1
+
                 if customer_id == 'B':
                     ports_list_temp = B_port_list[:]
                     ports_list_temp.remove(port_num)
-                    #self.controllers[pe].mc_mgrp_create(mc_grp_id)
                     handle_host = self.controllers[pe].mc_node_create(0, ports_list_temp)
-                    #self.controllers[pe].mc_node_associate(mc_grp_id, handle_B)
-                    #self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
                     print("handle_host:")
                     print(ports_list_temp)
-                    #print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
-                    #mc_grp_id += 1
                 
                 
                 all_host_list = self.get_host_list()
                 pe_host_list = self.topo.get_hosts_connected_to(pe)
-                expe_host_list = [item for item in all_host_list if item not in pe_host_list]
+                # hosts except for current host 除了当前主机以外的主机列表
+                expe_host_list = [item for item in all_host_list if item not in pe_host_list] 
                 tunnel_ids = []
                 pw_ids = []
-                for host1 in expe_host_list:#遍历其他主机  获取tunnelid  pwid
-                    if self.vpls_conf['hosts'][host] == self.vpls_conf['hosts'][host1]:#如果其他主机的id一致
-                
-                        for pe_pair in self.pe_pairs:#找tunnel id
+
+                for host1 in expe_host_list:#遍历其他主机  get tunnel id  pwid
+                    if self.vpls_conf['hosts'][host] == self.vpls_conf['hosts'][host1]:#if the customer label is the same 
+                        for pe_pair in self.pe_pairs:
                             if(pe_pair[0] == pe):
                                 if host1 in self.topo.get_hosts_connected_to(pe_pair[1]):
                                     tunnel_ids.append(self.pe_pairs.index(pe_pair))
@@ -438,24 +433,15 @@ class RoutingController(object):
                                     tunnel_ids.append(self.pe_pairs.index(pe_pair))
                                     pw_ids.append(self.get_pw_id(pe_pair[0], host1))
                 
-                
-                
+                #handles list for switch to tunnels 隧道节点
                 handle_tunnels = []
                 for index in range(len(tunnel_ids)):
-    
                     print("handle_tunnel:")
                     print(tunnel_port_list)
-                    # self.controllers[pe].mc_mgrp_create(mc_grp_id)
                     handle_tunnel = self.controllers[pe].mc_node_create(rid, tunnel_port_list)
                     handle_tunnels.append(handle_tunnel)
-                    # self.controllers[pe].mc_node_associate(mc_grp_id, handle)
-                    # self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
-                    
                     self.controllers[pe].table_add('whether_encap_egress', 'encap_egress', [str(rid)], [str(tunnel_ids[index]), str(pw_ids[index])])
-
-                    #print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
                     print("on {}: Adding to whether_encap_egress with action encap_egress: keys = [{}], values = [{}, {}]".format(pe, rid, tunnel_ids[index], pw_ids[index]))
-                    
                     rid = rid + 1    
             
                 self.controllers[pe].mc_mgrp_create(mc_grp_id)
@@ -465,11 +451,9 @@ class RoutingController(object):
                 self.controllers[pe].table_add('select_mcast_grp', 'set_mcast_grp', [str(port_num)], [str(mc_grp_id)])
                 print("handle_tunnel and handle_host ass to mgrp: {}".format(mc_grp_id))
                 print("on {}: Adding to select_mcast_grp with action set_mcast_grp: keys = [{}], values = [{}]".format(pe, port_num, mc_grp_id))
-                mc_grp_id += 1
 
-        ### logic to be executed at the start-up of the topology
-        ### hint: compute ECMP paths here
-        ### use exercise 08-Simple Routing as a reference
+                # one multicast group id for each host
+                mc_grp_id += 1
         pass
 
 

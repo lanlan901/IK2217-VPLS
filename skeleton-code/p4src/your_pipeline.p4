@@ -57,10 +57,7 @@ control MyIngress(inout headers hdr,
     }
 
     action set_nhop(egressSpec_t port) {
-        // hdr.ethernet.srcAddr = srcAddr;
-        // hdr.ethernet.dstAddr = dstAddr;
         standard_metadata.egress_spec = port;
-        //hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
 
     action decap_nhop(egressSpec_t port){
@@ -172,28 +169,29 @@ control MyIngress(inout headers hdr,
 
     apply {
         learning_table.apply();
-        //匹配进入端口做转发（什么都不做留到else中处理）/封装
-        whether_encap.apply();// encap or NoAction
-        //whether_decap.apply();// decap or NoAction
+        //whether the packet should be encapsulated with tunnel header
+        whether_encap.apply();
 
         if (hdr.tunnel.isValid()) {
-            if(whether_decap_nhop.apply().hit){}
-            else{
-            switch (tunnel_ecmp.apply().action_run) {//set_nhop or ecmp_group or drop
-                ecmp_group: {
-                    ecmp_group_to_nhop.apply();
+            //if it is encapsulated
+            if(whether_decap_nhop.apply().hit){} // decapsulate and set next hop at the end pe
+            else{ // in the path: ECMP
+                switch (tunnel_ecmp.apply().action_run) {//set_nhop or ecmp_group
+                    ecmp_group: {
+                        ecmp_group_to_nhop.apply();
+                    }
+                    set_nhop: {
+                        hdr.ethernet_outer.setValid();
+                        hdr.ethernet_outer.etherType = TYPE_TUNNEL;
+                        hdr.ethernet_outer.srcAddr = hdr.ethernet.srcAddr;
+                        hdr.ethernet_outer.dstAddr = hdr.ethernet.dstAddr;
+                    }
                 }
-                set_nhop: {
-                    hdr.ethernet_outer.setValid();
-                    hdr.ethernet_outer.etherType = TYPE_TUNNEL;
-                    hdr.ethernet_outer.srcAddr = hdr.ethernet.srcAddr;
-                    hdr.ethernet_outer.dstAddr = hdr.ethernet.dstAddr;
-                }
-             }
             }
-        }
-        else {
+        } else {
+            //normal packet: forward
             if (forward_table.apply().hit) { }
+            //multicast
             else select_mcast_grp.apply();
         }
     }
@@ -246,7 +244,7 @@ control MyEgress(inout headers hdr,
                 hdr.cpu.ingress_port = (bit<16>)meta.ingress_port;
             truncate((bit<32>)22);
             }
-        } //rid不等于0，是要发到隧道里的封装包
+        } //if rid != 0, it means it's a duplicate packet for multicast.
         else if (standard_metadata.egress_rid != 0) { 
             whether_encap_egress.apply();
         }
