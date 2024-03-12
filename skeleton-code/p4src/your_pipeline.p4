@@ -179,6 +179,10 @@ control MyIngress(inout headers hdr,
                 switch (tunnel_ecmp.apply().action_run) {//set_nhop or ecmp_group
                     ecmp_group: {
                         ecmp_group_to_nhop.apply();
+                        hdr.ethernet_outer.setValid();
+                        hdr.ethernet_outer.etherType = TYPE_TUNNEL;
+                        hdr.ethernet_outer.srcAddr = hdr.ethernet.srcAddr;
+                        hdr.ethernet_outer.dstAddr = hdr.ethernet.dstAddr;
                     }
                     set_nhop: {
                         hdr.ethernet_outer.setValid();

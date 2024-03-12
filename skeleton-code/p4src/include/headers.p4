@@ -5,7 +5,6 @@
 const bit<16> TYPE_IPV4 = 0x800;
 const bit<16> TYPE_TUNNEL = 0x2345;
 
-
 typedef bit<48> macAddr_t;
 typedef bit<32> ip4Addr_t;
 typedef bit<9> egressSpec_t;
