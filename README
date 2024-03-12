@@ -15,7 +15,7 @@ sudo python routing-controller.py 04-rooster-vpls.conf
 sudo python routing-controller.py 05-dioxetane-vpls.conf
 sudo python routing-controller.py 06-aries-vpls.conf
 
-sudo bash skeleton-code/test_topology_01.sh
+sudo bash test_topology_01.sh
 
 ssh p4@192.168.56.101
 cd /media/shared/skeleton-code
