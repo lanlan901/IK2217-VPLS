@@ -54,7 +54,7 @@ class EventBasedController(threading.Thread):
         if packet.type == 0x1234:
             cpu_header = CpuHeader(packet.payload)
             # todo
-            self.process_packet([(cpu_header.srcAddr, cpu_header.tunnel_id, cpu_header.pw_id, cpu_header.ingress_port)])
+            self.process_packet([(cpu_header.srcAddr)])
         elif packet.type == 0x5678:
             rtt_header = RttHeader(packet.payload)
             self.process_packet_rtt(
