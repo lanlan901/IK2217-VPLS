@@ -88,14 +88,12 @@ class EventBasedController(threading.Thread):
             ##learn MAC address
             mac_str = self.int_to_mac(macAddr)
             
-            print("tunnel_id: {} src_pw_id :{} dst_pw_id :{}".format(tunnel_id, src_pw_id, dst_pw_id))
+            #print("tunnel_id: {} src_pw_id :{} dst_pw_id :{}".format(tunnel_id, src_pw_id, dst_pw_id))
             
             if src_pw_id != 0 and dst_pw_id != 0:
-                print("true1")
                 for host in self.topo.get_hosts_connected_to(self.sw_name):
                     pw_id = self.get_pw_id(self.sw_name, host)
                     if pw_id == dst_pw_id:
-                        print("true2")
                         host_port = self.topo.node_to_node_port_num(self.sw_name, host)
                         host_mac = self.topo.get_host_mac(host)
                         self.controller.table_add("whether_encap", "encap", [str(host_port), str(host_mac), str(macAddr)], 
