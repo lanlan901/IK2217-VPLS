@@ -118,6 +118,7 @@ control MyIngress(inout headers hdr,
     table learning_table {
         key = {
             hdr.ethernet.srcAddr: exact;
+            hdr.tunnel.src_pw_id: exact;
         }
         actions = {
             mac_learn;

@@ -60,12 +60,16 @@ class EventBasedController(threading.Thread):
         customer_label = self.vpls_conf['hosts'][host_name]
         pw_id = hash(customer_label + sw_name) %1024 + port_num
         return pw_id
+    
+    def int_to_mac(self, int_value):
+        mac = ':'.join(('%012X' % int_value)[i:i+2] for i in range(0, 12, 2))
+        return mac
 
     def run(self):
         sniff(iface=self.cpu_port_intf, prn=self.recv_msg_cpu)
 
     def recv_msg_cpu(self, pkt):
-        print("received packet at " + str(self.sw_name) + " controller")
+        print("received packet at " + str(self.sw_name))
 
         packet = Ether(str(pkt))
 
@@ -82,21 +86,26 @@ class EventBasedController(threading.Thread):
     def process_packet(self, packet_data):
         for macAddr, ingress_port, tunnel_id, src_pw_id, dst_pw_id in packet_data:
             ##learn MAC address
-            #todo
-            if tunnel_id != 0 and src_pw_id != 0 and dst_pw_id != 0:
+            mac_str = self.int_to_mac(macAddr)
+            
+            print("tunnel_id: {} src_pw_id :{} dst_pw_id :{}".format(tunnel_id, src_pw_id, dst_pw_id))
+            
+            if src_pw_id != 0 and dst_pw_id != 0:
+                print("true1")
                 for host in self.topo.get_hosts_connected_to(self.sw_name):
                     pw_id = self.get_pw_id(self.sw_name, host)
                     if pw_id == dst_pw_id:
+                        print("true2")
                         host_port = self.topo.node_to_node_port_num(self.sw_name, host)
                         host_mac = self.topo.get_host_mac(host)
                         self.controller.table_add("whether_encap", "encap", [str(host_port), str(host_mac), str(macAddr)], 
                                                     [str(tunnel_id), str(pw_id), str(src_pw_id)])
                         print("on {}: Adding to whether_encap with action encap: keys = [{}, {}, {}], values = [{}, {}, {}]".format
-                                                    (self.sw_name, host_port, host_mac, str(macAddr), tunnel_id, pw_id, src_pw_id))
+                                                    (self.sw_name, host_port, host_mac, mac_str, tunnel_id, pw_id, src_pw_id))
             
-            self.controller.table_add('learning_table', 'NoAction', [str(macAddr)], [])
-            print("on {}: Adding to learning_table with NoAction: keys = [{}], values = []".format
-                                (self.sw_name, macAddr))
+            self.controller.table_add('learning_table', 'NoAction', [str(macAddr), str(src_pw_id)], [])
+            print("on {}: Adding to learning_table with NoAction: keys = [{}, {}], values = []".format
+                                (self.sw_name, mac_str, src_pw_id))
         pass
     
     def process_packet_rtt(self, packet_data):
@@ -368,6 +377,7 @@ class RoutingController(object):
                     ex_sw2 = path[path.index(pe2) - 1]
                     sw_port2 = self.topo.node_to_node_port_num(pe2, ex_sw2)#与pe2相邻的sw的端口
                     
+                    #todo
                     for host1 in self.topo.get_hosts_connected_to(pe1):
                         for host2 in self.topo.get_hosts_connected_to(pe2):
                             customer1_id = self.vpls_conf['hosts'][host1]
