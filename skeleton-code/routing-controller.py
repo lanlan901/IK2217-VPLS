@@ -19,9 +19,11 @@ class CpuHeader(Packet):
     ### define your own CPU header
     fields_desc = [
         BitField('srcAddr', 0, 48),
+        BitField('ingress_port', 0, 16),
         BitField('tunnel_id', 0, 16),
-        BitField('pw_id', 0, 16),
-        BitField('ingress_port', 0, 16)]
+        BitField('dst_pw_id', 0, 16),
+        BitField('src_pw_id', 0, 16)
+        ]
 
 
 class RttHeader(Packet):
@@ -42,6 +44,22 @@ class EventBasedController(threading.Thread):
         self.thrift_port = params["thrift_port"]
         self.id_to_switch = params["id_to_switch"]
         self.controller = SimpleSwitchAPI(thrift_port)
+        self.vpls_conf_file = params["vpls_conf_file"]
+        self.init()
+
+    def init(self):
+        self.extract_customers_information()
+        
+    def extract_customers_information(self):
+        with open(self.vpls_conf_file) as json_file:
+            self.vpls_conf = json.load(json_file)
+            
+    def get_pw_id(self, sw_name, host_name): #mapping between host and pw_id, given switch  连接到特定交换机的特定主机和pw_id的映射
+
+        port_num = self.topo.node_to_node_port_num(sw_name, host_name)
+        customer_label = self.vpls_conf['hosts'][host_name]
+        pw_id = hash(customer_label + sw_name) %1024 + port_num
+        return pw_id
 
     def run(self):
         sniff(iface=self.cpu_port_intf, prn=self.recv_msg_cpu)
@@ -54,16 +72,31 @@ class EventBasedController(threading.Thread):
         if packet.type == 0x1234:
             cpu_header = CpuHeader(packet.payload)
             # todo
-            self.process_packet([(cpu_header.srcAddr)])
+            
+            self.process_packet([(cpu_header.srcAddr, cpu_header.ingress_port, cpu_header.tunnel_id, cpu_header.src_pw_id, cpu_header.dst_pw_id)])
         elif packet.type == 0x5678:
             rtt_header = RttHeader(packet.payload)
             self.process_packet_rtt(
                 [(rtt_header.customer_id, rtt_header.ip_addr_src, rtt_header.ip_addr_dst, rtt_header.rtt)])
 
     def process_packet(self, packet_data):
-        for macAddr in packet_data:
+        for macAddr, ingress_port, tunnel_id, src_pw_id, dst_pw_id in packet_data:
             ##learn MAC address
+            #todo
+            if tunnel_id != 0 and src_pw_id != 0 and dst_pw_id != 0:
+                for host in self.topo.get_hosts_connected_to(self.sw_name):
+                    pw_id = self.get_pw_id(self.sw_name, host)
+                    if pw_id == dst_pw_id:
+                        host_port = self.topo.node_to_node_port_num(self.sw_name, host)
+                        host_mac = self.topo.get_host_mac(host)
+                        self.controller.table_add("whether_encap", "encap", [str(host_port), str(host_mac), str(macAddr)], 
+                                                    [str(tunnel_id), str(pw_id), str(src_pw_id)])
+                        print("on {}: Adding to whether_encap with action encap: keys = [{}, {}, {}], values = [{}, {}, {}]".format
+                                                    (self.sw_name, host_port, host_mac, str(macAddr), tunnel_id, pw_id, src_pw_id))
+            
             self.controller.table_add('learning_table', 'NoAction', [str(macAddr)], [])
+            print("on {}: Adding to learning_table with NoAction: keys = [{}], values = []".format
+                                (self.sw_name, macAddr))
         pass
     
     def process_packet_rtt(self, packet_data):
@@ -263,10 +296,10 @@ class RoutingController(object):
                         self.controllers[pe2].table_add("tunnel_ecmp", "set_nhop", [str(host_port2), str(tunnel_id)], [str(sw_port2)])
 
                         #check whether needs encapsulation or not #设置封装包
-                        self.controllers[pe1].table_add("whether_encap", "encap", [str(host_port1), str(host1_mac), str(host2_mac)], 
-                                                        [str(tunnel_id), str(pw_id2)])
-                        self.controllers[pe2].table_add("whether_encap", "encap", [str(host_port2), str(host2_mac), str(host1_mac)], 
-                                                        [str(tunnel_id), str(pw_id1)])
+                        # self.controllers[pe1].table_add("whether_encap", "encap", [str(host_port1), str(host1_mac), str(host2_mac)], 
+                        #                                 [str(tunnel_id), str(pw_id2)])
+                        # self.controllers[pe2].table_add("whether_encap", "encap", [str(host_port2), str(host2_mac), str(host1_mac)], 
+                        #                                 [str(tunnel_id), str(pw_id1)])
                         #check whether it can be decapsulated and forward #设置解封包
                         self.controllers[pe1].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port1), str(pw_id1)], [str(host_port1)])
                         self.controllers[pe2].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port2), str(pw_id2)], [str(host_port2)])
@@ -274,8 +307,8 @@ class RoutingController(object):
                         print("on {}: Adding to tunnel_ecmp with action set_nhop: keys = [{}, {}], values = [{}]".format(pe1, host_port1, tunnel_id, sw_port1))
                         print("on {}: Adding to tunnel_ecmp with action set_nhop: keys = [{}, {}], values = [{}]".format(pe2, host_port2, tunnel_id, sw_port2))
 
-                        print("on {}: Adding to whether_encap with action encap: keys = [{}, {}, {}], values = [{}, {}]".format(pe1, host_port1, host1_mac, host2_mac, tunnel_id, pw_id2))
-                        print("on {}: Adding to whether_encap with action encap: keys = [{}, {}, {}], values = [{}, {}]".format(pe2, host_port2, host2_mac, host1_mac, tunnel_id, pw_id1))
+                        # print("on {}: Adding to whether_encap with action encap: keys = [{}, {}, {}], values = [{}, {}]".format(pe1, host_port1, host1_mac, host2_mac, tunnel_id, pw_id2))
+                        # print("on {}: Adding to whether_encap with action encap: keys = [{}, {}, {}], values = [{}, {}]".format(pe2, host_port2, host2_mac, host1_mac, tunnel_id, pw_id1))
 
                         print("on {}: Adding to whether_decap_nhop with action decap_nhop: keys = [{}, {}], values = [{}]".format(pe1, sw_port1, pw_id1, host_port1))
                         print("on {}: Adding to whether_decap_nhop with action decap_nhop: keys = [{}, {}], values = [{}]".format(pe2, sw_port2, pw_id2, host_port2))
@@ -354,10 +387,11 @@ class RoutingController(object):
                             self.controllers[pe2].table_add("tunnel_ecmp", "ecmp_group", 
                                                             [str(host_port2), str(tunnel_id)], [str(ecmp_group_id2), str(len(sw2_ports))])
                             #check whether needs encapsulation or not
-                            self.controllers[pe1].table_add("whether_encap", "encap", [str(host_port1), str(host1_mac), str(host2_mac)], 
-                                                        [str(tunnel_id), str(pw_id2)])
-                            self.controllers[pe2].table_add("whether_encap", "encap", [str(host_port2), str(host2_mac), str(host1_mac)], 
-                                                        [str(tunnel_id), str(pw_id1)])
+                            #todo
+                            # self.controllers[pe1].table_add("whether_encap", "encap", [str(host_port1), str(host1_mac), str(host2_mac)], 
+                            #                             [str(tunnel_id), str(pw_id2)])
+                            # self.controllers[pe2].table_add("whether_encap", "encap", [str(host_port2), str(host2_mac), str(host1_mac)], 
+                            #                             [str(tunnel_id), str(pw_id1)])
                             #check whether it can be decapsulated and forward
                             self.controllers[pe1].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port1), str(pw_id1)], [str(host_port1)])
                             self.controllers[pe2].table_add("whether_decap_nhop", "decap_nhop", [str(sw_port2), str(pw_id2)], [str(host_port2)])
@@ -365,8 +399,8 @@ class RoutingController(object):
                             print("on {}: Adding to tunnel_ecmp with action ecmp_group: keys = [{}, {}], values = [{}, {}]".format(pe1, host_port1, tunnel_id, ecmp_group_id1, len(sw1_ports)))
                             print("on {}: Adding to tunnel_ecmp with action ecmp_group: keys = [{}, {}], values = [{}, {}]".format(pe2, host_port2, tunnel_id, ecmp_group_id2, len(sw2_ports)))
 
-                            print("on {}: Adding to whether_encap with action encap: keys = [{}, {}, {}], values = [{}, {}]".format(pe1, host_port1, host1_mac, host2_mac, tunnel_id, pw_id2))
-                            print("on {}: Adding to whether_encap with action encap: keys = [{}, {}, {}], values = [{}, {}]".format(pe2, host_port2, host2_mac, host1_mac, tunnel_id, pw_id1))
+                            # print("on {}: Adding to whether_encap with action encap: keys = [{}, {}, {}], values = [{}, {}]".format(pe1, host_port1, host1_mac, host2_mac, tunnel_id, pw_id2))
+                            # print("on {}: Adding to whether_encap with action encap: keys = [{}, {}, {}], values = [{}, {}]".format(pe2, host_port2, host2_mac, host1_mac, tunnel_id, pw_id1))
 
                             print("on {}: Adding to whether_decap_nhop with action decap_nhop: keys = [{}, {}], values = [{}]".format(pe1, sw_port1, pw_id1, host_port1))
                             print("on {}: Adding to whether_decap_nhop with action decap_nhop: keys = [{}, {}], values = [{}]".format(pe2, sw_port2, pw_id2, host_port2))
@@ -419,6 +453,7 @@ class RoutingController(object):
                 expe_host_list = [item for item in all_host_list if item not in pe_host_list] 
                 tunnel_ids = []
                 pw_ids = []
+                my_pw_id = self.get_pw_id(pe, host)
 
                 for host1 in expe_host_list:#遍历其他主机  get tunnel id  pwid
                     if self.vpls_conf['hosts'][host] == self.vpls_conf['hosts'][host1]:#if the customer label is the same 
@@ -440,7 +475,7 @@ class RoutingController(object):
                     print(tunnel_port_list)
                     handle_tunnel = self.controllers[pe].mc_node_create(rid, tunnel_port_list)
                     handle_tunnels.append(handle_tunnel)
-                    self.controllers[pe].table_add('whether_encap_egress', 'encap_egress', [str(rid)], [str(tunnel_ids[index]), str(pw_ids[index])])
+                    self.controllers[pe].table_add('whether_encap_egress', 'encap_egress', [str(rid)], [str(tunnel_ids[index]), str(my_pw_id), str(pw_ids[index])])
                     print("on {}: Adding to whether_encap_egress with action encap_egress: keys = [{}], values = [{}, {}]".format(pe, rid, tunnel_ids[index], pw_ids[index]))
                     rid = rid + 1    
             
@@ -477,6 +512,7 @@ if __name__ == "__main__":
         params["cpu_port_intf"] = cpu_port_intf
         params["thrift_port"] = thrift_port
         params["id_to_switch"] = id_to_switch
+        params["vpls_conf_file"] = vpls_conf_file
         thread = EventBasedController(params)
         thread.setName('MyThread ' + str(sw_name))
         thread.daemon = True

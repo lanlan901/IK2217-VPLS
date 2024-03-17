@@ -824,12 +824,14 @@ header cpu_t{
     bit<48> srcAddr;
     bit<16> ingress_port;
     tunnel_id_t tunnel_id;
-    pw_id_t pw_id;
+    pw_id_t dst_pw_id;
+    pw_id_t src_pw_id;
 }
 
 header tunnel_t{
     tunnel_id_t tunnel_id;
-    pw_id_t pw_id;
+    pw_id_t dst_pw_id;
+    pw_id_t src_pw_id;
 }
 
 header tcp_t{
@@ -869,11 +871,9 @@ struct headers {
 # 7 "p4src/your_pipeline.p4" 2
 # 1 "p4src/include/parsers.p4" 1
 /*************************************************************************
-
 *********************** P A R S E R  *******************************
-
 *************************************************************************/
-# 5 "p4src/include/parsers.p4"
+
 parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
@@ -919,11 +919,9 @@ parser MyParser(packet_in packet,
 }
 
 /*************************************************************************
-
 ***********************  D E P A R S E R  *******************************
-
 *************************************************************************/
-# 53 "p4src/include/parsers.p4"
+
 control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet_outer);
@@ -940,21 +938,17 @@ const bit<16> L2_LEARN_ETHER_TYPE = 0x1234;
 const bit<16> RTT_ETHER_TYPE = 0x5678;
 
 /*************************************************************************
-
 ************   C H E C K S U M    V E R I F I C A T I O N   *************
-
 *************************************************************************/
-# 16 "p4src/your_pipeline.p4"
+
 control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
     apply { }
 }
 
 /*************************************************************************
-
 **************  I N G R E S S   P R O C E S S I N G   *******************
-
 *************************************************************************/
-# 24 "p4src/your_pipeline.p4"
+
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
@@ -1062,7 +1056,7 @@ control MyIngress(inout headers hdr,
     }
 
     //encap && decap
-    action encap(tunnel_id_t tunnel_id, pw_id_t pw_id) {
+    action encap(tunnel_id_t tunnel_id, pw_id_t src_pw_id, pw_id_t dst_pw_id) {
         hdr.ethernet_outer.setValid();
         hdr.ethernet_outer.srcAddr = hdr.ethernet.srcAddr;
         hdr.ethernet_outer.dstAddr = hdr.ethernet.dstAddr;
@@ -1070,7 +1064,8 @@ control MyIngress(inout headers hdr,
 
         hdr.tunnel.setValid();
         hdr.tunnel.tunnel_id = tunnel_id;
-        hdr.tunnel.pw_id = pw_id;
+        hdr.tunnel.src_pw_id = src_pw_id;
+        hdr.tunnel.dst_pw_id = dst_pw_id;
     }
 
     table whether_encap {
@@ -1090,7 +1085,7 @@ control MyIngress(inout headers hdr,
     table whether_decap_nhop {
         key = {
             standard_metadata.ingress_port: exact;
-            hdr.tunnel.pw_id: exact;
+            hdr.tunnel.dst_pw_id: exact;
         }
         actions = {
             decap_nhop;
@@ -1136,11 +1131,9 @@ control MyIngress(inout headers hdr,
 }
 
 /*************************************************************************
-
 ****************  E G R E S S   P R O C E S S I N G   *******************
-
 *************************************************************************/
-# 208 "p4src/your_pipeline.p4"
+
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
@@ -1149,12 +1142,13 @@ control MyEgress(inout headers hdr,
         mark_to_drop();
     }
 
-    action encap_egress(tunnel_id_t tunnel_id, pw_id_t pw_id) {
+    action encap_egress(tunnel_id_t tunnel_id, pw_id_t src_pw_id, pw_id_t dst_pw_id) {
         hdr.ethernet_outer.setValid();
         hdr.tunnel.setValid();
         hdr.ethernet_outer.etherType = TYPE_TUNNEL;
         hdr.tunnel.tunnel_id = tunnel_id;
-        hdr.tunnel.pw_id = pw_id;
+        hdr.tunnel.src_pw_id = src_pw_id;
+        hdr.tunnel.dst_pw_id = dst_pw_id;
         hdr.ethernet_outer.srcAddr = hdr.ethernet.srcAddr;
         hdr.ethernet_outer.dstAddr = hdr.ethernet.dstAddr;
     }
@@ -1174,13 +1168,18 @@ control MyEgress(inout headers hdr,
             hdr.cpu.setValid();
             hdr.cpu.srcAddr = hdr.ethernet.srcAddr;
             hdr.ethernet.etherType = L2_LEARN_ETHER_TYPE;
+
             if (hdr.tunnel.isValid()) {
                 hdr.cpu.tunnel_id = hdr.tunnel.tunnel_id;
-                hdr.cpu.pw_id = hdr.tunnel.pw_id;
+                hdr.cpu.src_pw_id = hdr.tunnel.src_pw_id;
+                hdr.cpu.dst_pw_id = hdr.tunnel.dst_pw_id;
                 hdr.cpu.ingress_port = 0;
+                hdr.ethernet_outer.setInvalid();
+                hdr.tunnel.setInvalid();
             } else {
                 hdr.cpu.tunnel_id = 0;
-                hdr.cpu.pw_id = 0;
+                hdr.cpu.src_pw_id = 0;
+                hdr.cpu.dst_pw_id = 0;
                 hdr.cpu.ingress_port = (bit<16>)meta.ingress_port;
             truncate((bit<32>)22);
             }
@@ -1192,11 +1191,9 @@ control MyEgress(inout headers hdr,
 }
 
 /*************************************************************************
-
 *************   C H E C K S U M    C O M P U T A T I O N   **************
-
 *************************************************************************/
-# 262 "p4src/your_pipeline.p4"
+
 control MyComputeChecksum(inout headers hdr, inout metadata meta) {
      apply {
  update_checksum(
@@ -1219,11 +1216,9 @@ control MyComputeChecksum(inout headers hdr, inout metadata meta) {
 }
 
 /*************************************************************************
-
 ***********************  S W I T C H  *******************************
-
 *************************************************************************/
-# 287 "p4src/your_pipeline.p4"
+
 //switch architecture
 V1Switch(
 MyParser(),

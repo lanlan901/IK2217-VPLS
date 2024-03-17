@@ -128,7 +128,7 @@ control MyIngress(inout headers hdr,
     }
 
     //encap && decap
-    action encap(tunnel_id_t tunnel_id, pw_id_t pw_id) {
+    action encap(tunnel_id_t tunnel_id, pw_id_t src_pw_id, pw_id_t dst_pw_id) {
         hdr.ethernet_outer.setValid();
         hdr.ethernet_outer.srcAddr = hdr.ethernet.srcAddr;
         hdr.ethernet_outer.dstAddr = hdr.ethernet.dstAddr;
@@ -136,7 +136,8 @@ control MyIngress(inout headers hdr,
 
         hdr.tunnel.setValid();
         hdr.tunnel.tunnel_id = tunnel_id;
-        hdr.tunnel.pw_id = pw_id;
+        hdr.tunnel.src_pw_id = src_pw_id;
+        hdr.tunnel.dst_pw_id = dst_pw_id;
     }
 
     table whether_encap {
@@ -156,7 +157,7 @@ control MyIngress(inout headers hdr,
     table whether_decap_nhop {
         key = {
             standard_metadata.ingress_port: exact;
-            hdr.tunnel.pw_id: exact;
+            hdr.tunnel.dst_pw_id: exact;
         }
         actions = {
             decap_nhop;
@@ -213,12 +214,13 @@ control MyEgress(inout headers hdr,
         mark_to_drop();
     }
 
-    action encap_egress(tunnel_id_t tunnel_id, pw_id_t pw_id) {
+    action encap_egress(tunnel_id_t tunnel_id, pw_id_t src_pw_id, pw_id_t dst_pw_id) {
         hdr.ethernet_outer.setValid();
         hdr.tunnel.setValid();
         hdr.ethernet_outer.etherType = TYPE_TUNNEL;
         hdr.tunnel.tunnel_id = tunnel_id;
-        hdr.tunnel.pw_id = pw_id;
+        hdr.tunnel.src_pw_id = src_pw_id;
+        hdr.tunnel.dst_pw_id = dst_pw_id;
         hdr.ethernet_outer.srcAddr = hdr.ethernet.srcAddr;
         hdr.ethernet_outer.dstAddr = hdr.ethernet.dstAddr;       
     }
@@ -238,13 +240,18 @@ control MyEgress(inout headers hdr,
             hdr.cpu.setValid();
             hdr.cpu.srcAddr = hdr.ethernet.srcAddr;
             hdr.ethernet.etherType = L2_LEARN_ETHER_TYPE;
+            
             if (hdr.tunnel.isValid()) {
                 hdr.cpu.tunnel_id = hdr.tunnel.tunnel_id;
-                hdr.cpu.pw_id = hdr.tunnel.pw_id;
+                hdr.cpu.src_pw_id = hdr.tunnel.src_pw_id;
+                hdr.cpu.dst_pw_id = hdr.tunnel.dst_pw_id;
                 hdr.cpu.ingress_port = 0;
+                hdr.ethernet_outer.setInvalid();
+                hdr.tunnel.setInvalid();
             } else {
                 hdr.cpu.tunnel_id = 0;
-                hdr.cpu.pw_id = 0;
+                hdr.cpu.src_pw_id = 0;
+                hdr.cpu.dst_pw_id = 0;
                 hdr.cpu.ingress_port = (bit<16>)meta.ingress_port;
             truncate((bit<32>)22);
             }

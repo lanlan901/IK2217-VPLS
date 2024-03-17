@@ -38,12 +38,14 @@ header cpu_t{
     bit<48> srcAddr;
     bit<16> ingress_port;
     tunnel_id_t tunnel_id;
-    pw_id_t pw_id;
+    pw_id_t dst_pw_id;
+    pw_id_t src_pw_id;
 }
 
 header tunnel_t{
     tunnel_id_t tunnel_id;
-    pw_id_t pw_id;
+    pw_id_t dst_pw_id;
+    pw_id_t src_pw_id;
 }
 
 header tcp_t{
