@@ -785,9 +785,11 @@ package V1Switch<H, M>(Parser<H, M> p,
 //My includes 
 # 1 "p4src/include/headers.p4" 1
 /*************************************************************************
-*********************** H E A D E R S  ***********************************
-*************************************************************************/
 
+*********************** H E A D E R S  ***********************************
+
+*************************************************************************/
+# 5 "p4src/include/headers.p4"
 const bit<16> TYPE_IPV4 = 0x800;
 const bit<16> TYPE_TUNNEL = 0x2345;
 
@@ -871,9 +873,11 @@ struct headers {
 # 7 "p4src/your_pipeline.p4" 2
 # 1 "p4src/include/parsers.p4" 1
 /*************************************************************************
-*********************** P A R S E R  *******************************
-*************************************************************************/
 
+*********************** P A R S E R  *******************************
+
+*************************************************************************/
+# 5 "p4src/include/parsers.p4"
 parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
@@ -919,9 +923,11 @@ parser MyParser(packet_in packet,
 }
 
 /*************************************************************************
-***********************  D E P A R S E R  *******************************
-*************************************************************************/
 
+***********************  D E P A R S E R  *******************************
+
+*************************************************************************/
+# 53 "p4src/include/parsers.p4"
 control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet_outer);
@@ -938,17 +944,21 @@ const bit<16> L2_LEARN_ETHER_TYPE = 0x1234;
 const bit<16> RTT_ETHER_TYPE = 0x5678;
 
 /*************************************************************************
-************   C H E C K S U M    V E R I F I C A T I O N   *************
-*************************************************************************/
 
+************   C H E C K S U M    V E R I F I C A T I O N   *************
+
+*************************************************************************/
+# 16 "p4src/your_pipeline.p4"
 control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
     apply { }
 }
 
 /*************************************************************************
-**************  I N G R E S S   P R O C E S S I N G   *******************
-*************************************************************************/
 
+**************  I N G R E S S   P R O C E S S I N G   *******************
+
+*************************************************************************/
+# 24 "p4src/your_pipeline.p4"
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
@@ -1047,6 +1057,7 @@ control MyIngress(inout headers hdr,
         key = {
             hdr.ethernet.srcAddr: exact;
             hdr.tunnel.src_pw_id: exact;
+            hdr.tunnel.dst_pw_id: exact;
         }
         actions = {
             mac_learn;
@@ -1132,9 +1143,11 @@ control MyIngress(inout headers hdr,
 }
 
 /*************************************************************************
-****************  E G R E S S   P R O C E S S I N G   *******************
-*************************************************************************/
 
+****************  E G R E S S   P R O C E S S I N G   *******************
+
+*************************************************************************/
+# 211 "p4src/your_pipeline.p4"
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
@@ -1192,9 +1205,11 @@ control MyEgress(inout headers hdr,
 }
 
 /*************************************************************************
-*************   C H E C K S U M    C O M P U T A T I O N   **************
-*************************************************************************/
 
+*************   C H E C K S U M    C O M P U T A T I O N   **************
+
+*************************************************************************/
+# 271 "p4src/your_pipeline.p4"
 control MyComputeChecksum(inout headers hdr, inout metadata meta) {
      apply {
  update_checksum(
@@ -1217,9 +1232,11 @@ control MyComputeChecksum(inout headers hdr, inout metadata meta) {
 }
 
 /*************************************************************************
-***********************  S W I T C H  *******************************
-*************************************************************************/
 
+***********************  S W I T C H  *******************************
+
+*************************************************************************/
+# 296 "p4src/your_pipeline.p4"
 //switch architecture
 V1Switch(
 MyParser(),
