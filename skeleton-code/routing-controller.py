@@ -46,6 +46,8 @@ class EventBasedController(threading.Thread):
         self.controller = SimpleSwitchAPI(thrift_port)
         self.vpls_conf_file = params["vpls_conf_file"]
         self.init()
+        self.learned_macs = set()
+
 
     def init(self):
         self.extract_customers_information()
@@ -76,8 +78,8 @@ class EventBasedController(threading.Thread):
         if packet.type == 0x1234:
             cpu_header = CpuHeader(packet.payload)
             # todo
-            
             self.process_packet([(cpu_header.srcAddr, cpu_header.ingress_port, cpu_header.tunnel_id, cpu_header.src_pw_id, cpu_header.dst_pw_id)])
+
         elif packet.type == 0x5678:
             rtt_header = RttHeader(packet.payload)
             self.process_packet_rtt(
@@ -100,10 +102,12 @@ class EventBasedController(threading.Thread):
                                                     [str(tunnel_id), str(pw_id), str(src_pw_id)])
                         print("on {}: Adding to whether_encap with action encap: keys = [{}, {}, {}], values = [{}, {}, {}]".format
                                                     (self.sw_name, host_port, host_mac, mac_str, tunnel_id, pw_id, src_pw_id))
-            
-            self.controller.table_add('learning_table', 'NoAction', [str(macAddr), str(src_pw_id)], [])
-            print("on {}: Adding to learning_table with NoAction: keys = [{}, {}], values = []".format
-                                (self.sw_name, mac_str, src_pw_id))
+            if macAddr not in self.learned_macs:
+                self.controller.table_add('learning_table', 'NoAction', [str(macAddr), str(src_pw_id)], [])
+                print("on {}: Adding to learning_table with NoAction: keys = [{}, {}], values = []".format(self.sw_name, mac_str, src_pw_id))
+                self.learned_macs.add(macAddr)
+            else:
+                continue
         pass
     
     def process_packet_rtt(self, packet_data):
